@@ -1,0 +1,11 @@
+{
+    "files.associations": {
+        "*.vt": "verilog",
+        "*.unity": "yaml",
+        "*.v": "coq",
+        "*.miniml": "plaintext",
+        "*.dasc": "c",
+        "*.as": "angelscript",
+        "cstdint": "c"
+    }
+}
