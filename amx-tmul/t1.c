@@ -175,7 +175,7 @@ int main()
     // Load tile rows from memory
     _tile_loadd(2, src1, STRIDE);
     _tile_loadd(3, src2, STRIDE);
-    _tile_loadd(1, res, STRIDE); // TODO: これは必要か?
+    // _tile_loadd(1, res, STRIDE); // 恐らくこの処理は不要
 
     // Compute dot-product of bytes in tiles
     _tile_dpbssd(1, 2, 3); // (dst, src0, src1)
