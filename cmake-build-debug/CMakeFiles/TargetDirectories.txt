@@ -1,0 +1,3 @@
+/home/b/b38415/ws/amx-intro/cmake-build-debug/CMakeFiles/amx_intro.dir
+/home/b/b38415/ws/amx-intro/cmake-build-debug/CMakeFiles/edit_cache.dir
+/home/b/b38415/ws/amx-intro/cmake-build-debug/CMakeFiles/rebuild_cache.dir
