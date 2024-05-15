@@ -11,7 +11,7 @@
 #include <unistd.h>
 #include <stdbool.h>
 
-#define MAX 1024
+#define MAX 1024 // 16 * 64
 #define MAX_ROWS 16
 #define MAX_COLS 64
 #define STRIDE 64

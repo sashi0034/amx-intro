@@ -8,6 +8,7 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3")
 set(SOURCE_FILES
         src/main.cpp
         src/AmxCalculator.cpp
+        src/Matrix.cpp
 )
 
 add_executable(amx-t2 ${SOURCE_FILES})
