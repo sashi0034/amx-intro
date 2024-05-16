@@ -1,10 +1,12 @@
 # --plain (AMX 無し)
 
+- 22.5877 seconds (最適化フラグ1無し)
 - 21.7587 seconds
 - 21.9453 seconds
 
 # --amx
 
+- 28.8553 seconds (最適化フラグ1無し)
 - 26.3994 seconds
 - 25.7795 seconds
 - 27.3841 seconds
