@@ -37,13 +37,13 @@ static void init_tile_config(__tilecfg *tileinfo)
     tileinfo->palette_id = 1;
     tileinfo->start_row = 0;
 
-    for (i = 0; i < 1; ++i)
-    {
-        tileinfo->colsb[i] = MAX_ROWS;
-        tileinfo->rows[i] = MAX_ROWS;
-    }
+//    for (i = 0; i < 1; ++i)
+//    {
+//        tileinfo->colsb[i] = MAX_ROWS;
+//        tileinfo->rows[i] = MAX_ROWS;
+//    }
 
-    for (i = 1; i < 4; ++i)
+    for (i = 0; i <= 2; ++i)
     {
         tileinfo->colsb[i] = MAX_COLS;
         tileinfo->rows[i] = MAX_ROWS;
@@ -154,15 +154,15 @@ int main()
     init_buffer32(res, 0);
 
     // Load tile rows from memory
-    _tile_loadd(2, src1, STRIDE);
-    _tile_loadd(3, src2, STRIDE);
-    _tile_loadd(1, res, STRIDE);
+    _tile_loadd(1, src1, STRIDE);
+    _tile_loadd(2, src2, STRIDE);
+    _tile_loadd(0, res, STRIDE);
 
     // Compute dot-product of bytes in tiles
-    _tile_dpbssd(1, 2, 3);
+    _tile_dpbssd(0, 1,2);
 
     // Store the tile data to memory
-    _tile_stored(1, res, STRIDE);
+    _tile_stored(0, res, STRIDE);
     print_buffer32(res, rows, colsb / 4);
 
     // Release the tile configuration to return to the init state,
