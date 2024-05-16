@@ -1,32 +1,48 @@
-//
-// Created by b38415 on 5/15/24.
-//
-
 #ifndef AMX_INTRO_MATRIX_H
 #define AMX_INTRO_MATRIX_H
 
-
 #include <cstdint>
+#include <array>
+#include <cstring>
 
 namespace amx {
-    struct Byte16x64 {
-        union {
-            int8_t bytes[16 * 64];
-            struct {
-                int8_t rows[64];
-            } cols[16];
+    struct Wards16x16;
+
+    struct Bytes16x64 {
+        using value_type = uint8_t;
+
+        struct Row {
+            std::array<value_type, 64> cols;
         };
+
+        union {
+            std::array<value_type, 16 * 64> bytes;
+            std::array<Row, 16> rows;
+        };
+
+        Bytes16x64() = default;
+
+        bool operator==(const Bytes16x64 &other) const {
+            return memcmp(bytes.data(), other.bytes.data(), sizeof(bytes)) == 0;
+        }
+
+        Wards16x16 operator*(const Wards16x16 &other) const;
+
+        std::string ToString() const;
     };
 
-    struct Ward16x16 {
+    struct Wards16x16 {
+        using value_type = int32_t;
+
+        struct Row {
+            std::array<value_type, 16> cols;
+        };
+
         union {
-            int32_t bytes[16 * 16];
-            struct {
-                int32_t rows[16];
-            } cols[16];
+            std::array<value_type, 16 * 16> bytes;
+            std::array<Row, 16> rows;
         };
     };
 }
-
 
 #endif //AMX_INTRO_MATRIX_H

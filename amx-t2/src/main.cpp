@@ -5,6 +5,7 @@
 #include <sys/syscall.h>
 #include <cstdint>
 #include "AmxCalculator.h"
+#include "Matrix.h"
 
 constexpr int MAX = 1024;
 constexpr int MAX_ROWS = 16;
@@ -62,6 +63,9 @@ bool set_tiledata_use() {
 
 int main() {
     amx::sayHello();
+
+    amx::Bytes16x64 bbb{};
+    std::cout << bbb.ToString() << '\n';
 
     TileConfig tile_data;
     std::vector<int8_t> src1(MAX), src2(MAX);
