@@ -10,7 +10,10 @@ namespace amx {
     public:
         AmxCalculator();
 
+        [[nodiscard]]
         Wards16x16 DotProduct(const Bytes16x64 &a, const Bytes16x64 &b) const;
+
+        void DotProduct(const Bytes16x64 &a, const Bytes16x64 &b, Wards16x16& c) const;
 
     private:
         struct Impl;

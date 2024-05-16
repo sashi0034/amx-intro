@@ -66,16 +66,19 @@ namespace amx {
     }
 
     Wards16x16 AmxCalculator::DotProduct(const Bytes16x64 &a, const Bytes16x64 &b) const {
+        Wards16x16 result;
+        DotProduct(a, b, result);
+        return result;
+    }
+
+    void AmxCalculator::DotProduct(const Bytes16x64 &a, const Bytes16x64 &b, Wards16x16 &c) const {
         constexpr int stride = 64;
 
         _tile_loadd(1, a.bytes.data(), stride);
-        _tile_loadd(2, a.bytes.data(), stride);
+        _tile_loadd(2, b.bytes.data(), stride);
 
         _tile_dpbssd(0, 1, 2);
 
-        Wards16x16 result;
-        _tile_stored(0, result.bytes.data(), stride);
-
-        return result;
+        _tile_stored(0, c.words.data(), stride);
     }
 } // amx

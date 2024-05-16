@@ -9,7 +9,7 @@ namespace amx {
     struct Wards16x16;
 
     struct Bytes16x64 {
-        using value_type = uint8_t;
+        using value_type = int8_t;
 
         struct Row {
             std::array<value_type, 64> cols;
@@ -26,7 +26,7 @@ namespace amx {
             return memcmp(bytes.data(), other.bytes.data(), sizeof(bytes)) == 0;
         }
 
-        Wards16x16 operator*(const Wards16x16 &other) const;
+        Wards16x16 operator*(const Bytes16x64 &other) const;
 
         std::string ToString() const;
     };
@@ -39,7 +39,7 @@ namespace amx {
         };
 
         union {
-            std::array<value_type, 16 * 16> bytes;
+            std::array<value_type, 16 * 16> words;
             std::array<Row, 16> rows;
         };
 

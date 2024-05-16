@@ -1,0 +1,10 @@
+# --plain (AMX 無し)
+
+- 21.7587 seconds
+- 21.9453 seconds
+
+# --amx
+
+- 26.3994 seconds
+- 25.7795 seconds
+- 27.3841 seconds

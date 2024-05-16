@@ -2,7 +2,7 @@
 #include "Matrix.h"
 
 namespace amx {
-    Wards16x16 Bytes16x64::operator*(const Wards16x16 &other) const {
+    Wards16x16 Bytes16x64::operator*(const Bytes16x64 &other) const {
         Wards16x16 result;
         for (int i = 0; i < 16; i++) {
             for (int j = 0; j < 16; j++) {
