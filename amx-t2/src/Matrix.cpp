@@ -28,4 +28,17 @@ namespace amx {
 
         return ss.str();
     }
+
+    std::string Wards16x16::ToString() const {
+        std::stringstream ss{};
+
+        for (int i = 0; i < 16; i++) {
+            for (int j = 0; j < 16; j++) {
+                ss << int(rows[i].cols[j]) << ' ';
+            }
+            ss << '\n';
+        }
+
+        return ss.str();
+    }
 }

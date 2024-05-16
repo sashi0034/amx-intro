@@ -42,6 +42,8 @@ namespace amx {
             std::array<value_type, 16 * 16> bytes;
             std::array<Row, 16> rows;
         };
+
+        std::string ToString() const;
     };
 }
 
