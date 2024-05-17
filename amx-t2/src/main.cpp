@@ -23,12 +23,12 @@ namespace {
         auto start = std::chrono::high_resolution_clock::now();
 
         for (int i = 0; i < testCases; ++i) {
-            for (int i = 0; i < a.bytes.size(); ++i) {
-                std::cin >> a.bytes[i];
+            for (int j = 0; j < a.bytes.size(); ++j) {
+                std::cin >> a.bytes[j];
             }
 
-            for (int i = 0; i < b.bytes.size(); ++i) {
-                std::cin >> b.bytes[i];
+            for (int j = 0; j < b.bytes.size(); ++j) {
+                std::cin >> b.bytes[j];
             }
 
             const auto c = func(a, b);
