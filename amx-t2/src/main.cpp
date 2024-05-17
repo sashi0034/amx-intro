@@ -63,8 +63,8 @@ namespace {
 
         for (int i = 0; i < testCaseCount * 2; ++i) {
             amx::Bytes16x64 a{};
-            for (int i = 0; i < a.bytes.size(); ++i) {
-                a.bytes[i] = GetRandomByte();
+            for (int j = 0; j < a.bytes.size(); ++j) {
+                a.bytes[j] = GetRandomByte();
             }
             std::cout << a.ToString() << "\n";
         }
