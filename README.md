@@ -1,1 +1,1 @@
-  # 研究用
+  # Learning AMX
