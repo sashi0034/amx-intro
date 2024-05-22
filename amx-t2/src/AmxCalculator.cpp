@@ -7,6 +7,8 @@
 #include "AmxCalculator.h"
 
 namespace {
+    using namespace amx;
+
     constexpr int ARCH_GET_XCOMP_PERM = 0x1022;
     constexpr int ARCH_REQ_XCOMP_PERM = 0x1023;
     constexpr int XFEATURE_XTILECFG = 17;
@@ -29,49 +31,34 @@ namespace {
         std::cout << "\nTILE DATA USE SET - OK\n\n";
     }
 
-    using namespace amx;
+    TileConfig s_config;
 }
 
-struct AmxCalculator::Impl {
-    TileConfig config;
-
-    Impl() {
+namespace amx {
+    void InitAmxCalculation() {
         setTiledataUse();
 
-        config.paletteId = 1;
-        config.startRow = 0;
+        s_config.paletteId = 1;
+        s_config.startRow = 0;
 
         // TODO: 変更を可能にする
-        config.cols[0] = 64;
-        config.rows[0] = 16;
+        s_config.cols[0] = 64;
+        s_config.rows[0] = 16;
 
-        config.cols[1] = 64;
-        config.rows[1] = 16;
+        s_config.cols[1] = 64;
+        s_config.rows[1] = 16;
 
-        config.cols[2] = 64;
-        config.rows[2] = 16;
+        s_config.cols[2] = 64;
+        s_config.rows[2] = 16;
 
-        _tile_loadconfig(this);
+        _tile_loadconfig(&s_config);
     }
 
-    ~Impl() {
+    void EndAmxCalculation() {
         _tile_release();
     }
-};
 
-namespace amx {
-
-    AmxCalculator::AmxCalculator() :
-            p_impl(std::make_shared<Impl>()) {
-    }
-
-    Wards16x16 AmxCalculator::DotProduct(const Bytes16x64 &a, const Bytes16x64 &b) const {
-        Wards16x16 result;
-        DotProduct(a, b, result);
-        return result;
-    }
-
-    void AmxCalculator::DotProduct(const Bytes16x64 &a, const Bytes16x64 &b, Wards16x16 &c) const {
+    Wards16x16 ComputeAmxDotProduct(const Bytes16x64 &a, const Bytes16x64 &b) {
         constexpr int stride = 64;
 
         _tile_loadd(1, a.bytes.data(), stride);
@@ -79,6 +66,9 @@ namespace amx {
 
         _tile_dpbssd(0, 1, 2);
 
+        Wards16x16 c{};
         _tile_stored(0, c.words.data(), stride);
+
+        return c;
     }
 } // amx

@@ -67,10 +67,13 @@ namespace {
 
     // AMX を使用して行列計算
     void runAmx() {
-        amx::AmxCalculator calculator{};
+        InitAmxCalculation();
+
         calculateTask([&](const Bytes16x64 &a, const Bytes16x64 &b) {
-            return calculator.DotProduct(a, b);
+            return ComputeAmxDotProduct(a, b);
         });
+
+        EndAmxCalculation();
     }
 
     // テスト用の行列を出力

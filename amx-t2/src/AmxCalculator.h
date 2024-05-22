@@ -5,22 +5,12 @@
 #include "Matrix.h"
 
 namespace amx {
+    void InitAmxCalculation();
 
-    class AmxCalculator {
-    public:
-        AmxCalculator();
+    void EndAmxCalculation();
 
-        [[nodiscard]]
-        Wards16x16 DotProduct(const Bytes16x64 &a, const Bytes16x64 &b) const;
-
-        void DotProduct(const Bytes16x64 &a, const Bytes16x64 &b, Wards16x16& c) const;
-
-    private:
-        struct Impl;
-
-        std::shared_ptr<Impl> p_impl;
-    };
-
+    [[nodiscard]]
+    Wards16x16 ComputeAmxDotProduct(const Bytes16x64 &a, const Bytes16x64 &b);
 } // amx
 
 #endif //AMX_INTRO_AMXCALCULATOR_H
