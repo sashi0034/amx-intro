@@ -10,7 +10,7 @@ namespace {
     using namespace amx;
     using namespace util;
 
-    constexpr int testCaseCount = 65536;
+    constexpr int testCaseCount = 50000;
 
     void calculateTask(const std::function<Wards16x16(Bytes16x64, Bytes16x64)> &func) {
         amx::Bytes16x64 a{};
@@ -22,6 +22,10 @@ namespace {
 
         auto start = std::chrono::high_resolution_clock::now();
 
+        std::vector<Wards16x16> results{};
+        results.reserve(testCases);
+
+        // テストケースを読み込み、すべての計算結果を保存
         for (int i = 0; i < testCases; ++i) {
             for (int j = 0; j < a.bytes.size(); ++j) {
                 std::cin >> a.bytes[j];
@@ -32,14 +36,26 @@ namespace {
             }
 
             const auto c = func(a, b);
-
-            std::cout << c.ToString() << "\n";
+            results.emplace_back(c);
         }
 
+        // 計算時間を表示
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> duration = end - start;
 
-        std::cout << "Done in " << duration.count() << " seconds\n";
+        std::cout << "Done in \n========================\n\n"
+                  << duration.count()
+                  << " seconds\n\n========================\n";
+
+        // 必要に応じて計算結果を表示
+        char show;
+        std::cout << "Show results? (Y/n): ";
+        std::cin >> show;
+        if (show == 'Y' || show == 'y') {
+            for (const auto &result: results) {
+                std::cout << result.ToString() << "\n";
+            }
+        }
     }
 
     // AMX 無しで愚直に行列計算
