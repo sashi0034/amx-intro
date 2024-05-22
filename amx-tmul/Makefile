@@ -6,7 +6,7 @@ CXX = icpc
 BUILD_DIR = build
 
 # ソースファイル
-SRCS = t1.c t2.c t3.cpp
+SRCS = t1.c t2.c t3.cpp t4.c
 
 # オブジェクトファイル (build ディレクトリ内)
 OBJS = $(SRCS:.c=.o)
@@ -30,6 +30,10 @@ build/t2: $(BUILD_DIR)/t2.o
 build/t3: $(BUILD_DIR)/t3.o
 	@mkdir -p $(BUILD_DIR)
 	$(CXX) -o $@ $(BUILD_DIR)/t3.o
+
+build/t4: $(BUILD_DIR)/t4.o
+	@mkdir -p $(BUILD_DIR)
+	$(CXX) -o $@ $(BUILD_DIR)/t4.o
 
 # オブジェクトファイルのルール
 $(BUILD_DIR)/%.o: %.c
