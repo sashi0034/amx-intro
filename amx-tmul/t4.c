@@ -45,6 +45,9 @@ static void init_tile_config(__tilecfg *tileinfo) {
         tileinfo->rows[i] = MAX_ROWS;
     }
 
+//    tileinfo->colsb[3] = MAX_ROWS;
+//    tileinfo->rows[3] = MAX_COLS;
+
     _tile_loadconfig(tileinfo);
 }
 
@@ -135,33 +138,38 @@ int main() {
     init_tile_config(&tile_data);
 
     // Init src matrix buffers with data
-    init_buffer(src1, 1);
+    init_buffer(src1, 0);
     init_buffer(src2, 0);
 
-    for (int i = 0; i < 25; ++i) {
+    for (int i = 0; i < 20; ++i) {
         src1[i] = 1;
         src2[i] = 1;
     }
 
+//    for (int i = 0; i < 25; ++i) {
+//        src1[i] = 1;
+//        src2[i] = 1;
+//    }
+
     //    src1[1 * MAX_COLS + 1] = 1;
     //    src1[2 * MAX_COLS + 25] = 1;
 
-    src1[14] = 100;
-
-    src2[3 * MAX_COLS + 2] = 10;
-    src2[4 * MAX_COLS + 1] = 1;
-    src2[1 * MAX_COLS + 1] = 1;
-    src2[7 * MAX_COLS + 1] = 1;
+//    src1[14] = 100;
+//
+//    src2[3 * MAX_COLS + 2] = 10;
+//    src2[4 * MAX_COLS + 1] = 1;
+//    src2[1 * MAX_COLS + 1] = 1;
+//    src2[7 * MAX_COLS + 1] = 1;
 
     print_buffer(src1, rows, colsb);
-    print_buffer(src2, rows, colsb);
+    print_buffer(src2, colsb, rows);
 
     // Init dst matrix buffers with data
     init_buffer32(res, 0);
 
     // Load tile rows from memory
     _tile_loadd(2, src1, STRIDE);
-    _tile_loadd(3, src2, STRIDE);
+    _tile_loadd(3, src2, 16);
     _tile_loadd(1, res, STRIDE);
 
     // Compute dot-product of bytes in tiles
