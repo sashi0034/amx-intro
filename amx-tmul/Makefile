@@ -35,6 +35,10 @@ build/t4: $(BUILD_DIR)/t4.o
 	@mkdir -p $(BUILD_DIR)
 	$(CXX) -o $@ $(BUILD_DIR)/t4.o
 
+build/t5: $(BUILD_DIR)/t5.o
+	@mkdir -p $(BUILD_DIR)
+	$(CXX) -o $@ $(BUILD_DIR)/t5.o
+
 # オブジェクトファイルのルール
 $(BUILD_DIR)/%.o: %.c
 	@mkdir -p $(BUILD_DIR)
