@@ -35,20 +35,25 @@ static void init_tile_config(__tilecfg *tileinfo) {
     tileinfo->palette_id = 1;
     tileinfo->start_row = 0;
 
-    for (i = 0; i < 1; ++i) {
-        tileinfo->colsb[i] = MAX_ROWS;
-        tileinfo->rows[i] = MAX_ROWS;
-    }
+    tileinfo->colsb[1] = MAX_COLS;
+    tileinfo->rows[1] = MAX_ROWS;
 
-    for (i = 1; i < 4; ++i) {
-        tileinfo->colsb[i] = MAX_COLS;
-        tileinfo->rows[i] = MAX_ROWS;
-    }
+    tileinfo->colsb[2] = MAX_COLS;
+    tileinfo->rows[2] = MAX_ROWS;
+
+    tileinfo->colsb[3] = MAX_COLS;
+    tileinfo->rows[3] = MAX_ROWS;
 
 //    tileinfo->colsb[3] = MAX_ROWS;
 //    tileinfo->rows[3] = MAX_COLS;
 
+    printf("Tile load start...\n");
+    fflush(stdout);
+
     _tile_loadconfig(tileinfo);
+
+    printf("Tile load end\n");
+    fflush(stdout);
 }
 
 /* Initialize int8_t buffer */
@@ -76,16 +81,31 @@ static void init_buffer32(int32_t *buf, int32_t value) {
         }
 }
 
-static void dot_product_matrix(int32_t *dst, int8_t *a, int8_t *b) {
-    for (int r = 0; r < MAX_ROWS; r++) {
-        for (int c = 0; c < MAX_ROWS; c++) {
-            dst[r * MAX_ROWS + c] = 0;
+static void naive_dpb(int32_t *dst, int8_t *a, int8_t *b) {
+    for (int m = 0; m < MAX_ROWS; ++m) {
+        for (int n = 0; n < MAX_ROWS; ++n) {
+            const int dst_id = m * MAX_ROWS + n;
+            dst[dst_id] = 0;
 
-            for (int i = 0; i < MAX_COLS; i++) {
-                dst[r * MAX_ROWS + c] += a[r * MAX_COLS + i] * b[i * MAX_ROWS + c];
+            for (int k = 0; k < MAX_COLS / 4; ++k) { // [0, 7]
+                dst[dst_id] += a[m * MAX_COLS + k * 4 + 0] * b[k * MAX_COLS + n * 4 + 0];
+                dst[dst_id] += a[m * MAX_COLS + k * 4 + 1] * b[k * MAX_COLS + n * 4 + 1];
+                dst[dst_id] += a[m * MAX_COLS + k * 4 + 2] * b[k * MAX_COLS + n * 4 + 2];
+                dst[dst_id] += a[m * MAX_COLS + k * 4 + 3] * b[k * MAX_COLS + n * 4 + 3];
             }
         }
     }
+
+
+    //    for (int r = 0; r < MAX_ROWS; r++) {
+    //        for (int c = 0; c < MAX_ROWS; c++) {
+    //            dst[r * MAX_ROWS + c] = 0;
+    //
+    //            for (int i = 0; i < MAX_COLS; i++) {
+    //                dst[r * MAX_ROWS + c] += a[r * MAX_COLS + i] * b[i * MAX_ROWS + c];
+    //            }
+    //        }
+    //    }
 }
 
 /* Set_tiledata_use() - Invoke syscall to set ARCH_SET_STATE_USE */
@@ -153,9 +173,9 @@ int main() {
     init_buffer(src1, 0);
     init_buffer(src2, 0);
 
-    for (int i = 0; i < 20; ++i) {
-        src1[i] = 1;
-        src2[i] = 1;
+    for (int i = 0; i < MAX; ++i) {
+        src1[i] = i;
+        src2[i] = i;
     }
 
 //    for (int i = 0; i < 25; ++i) {
@@ -174,14 +194,14 @@ int main() {
 //    src2[7 * MAX_COLS + 1] = 1;
 
     print_buffer(src1, rows, colsb);
-    print_buffer(src2, colsb, rows);
+    // print_buffer(src2, colsb, rows);
 
     // Init dst matrix buffers with data
     init_buffer32(res, 0);
 
     // Load tile rows from memory
     _tile_loadd(2, src1, STRIDE);
-    _tile_loadd(3, src2, 16);
+    _tile_loadd(3, src2, STRIDE);
     _tile_loadd(1, res, STRIDE);
 
     // Compute dot-product of bytes in tiles
@@ -194,7 +214,7 @@ int main() {
     print_buffer32(res, rows, colsb / 4);
 
     printf("======== no-amx\n");
-    dot_product_matrix(res, src1, src2);
+    naive_dpb(res, src1, src2);
     print_buffer32(res, rows, colsb / 4);
 
     // Release the tile configuration to return to the init state,
