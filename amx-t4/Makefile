@@ -21,7 +21,7 @@ all: $(TARGETS)
 # 各ターゲットのルール
 build/t4_amx: $(BUILD_DIR)/t4_amx.o
 	@mkdir -p $(BUILD_DIR)
-	$(CC) -o $@ $(BUILD_DIR)/t4_amx.o
+	$(CC) -g -O2 -o $@ $(BUILD_DIR)/t4_amx.o
 
 build/generate_test: $(BUILD_DIR)/generate_test.o
 	@mkdir -p $(BUILD_DIR)
@@ -30,7 +30,7 @@ build/generate_test: $(BUILD_DIR)/generate_test.o
 # オブジェクトファイルのルール
 $(BUILD_DIR)/%.o: %.c
 	@mkdir -p $(BUILD_DIR)
-	$(CC) -c $< -o $@
+	$(CC) -g -O2 -c $< -o $@
 
 $(BUILD_DIR)/%.o: %.cpp
 	@mkdir -p $(BUILD_DIR)
