@@ -169,9 +169,15 @@ int main() {
         scanf("%hhd", &src1.bytes[i]);
     }
 
-    for (int i = 0; i < MAX_SRC_256; ++i) {
-        scanf("%hhd", &src2.bytes[i]);
+    for (int r = 0; r < MAX_COLS_32; r++) {
+        for (int c = 0; c < MAX_ROWS_8; ++c) {
+            // Note: The other matrix used in the AMX matrix product calculation is an irregular arrangement
+            scanf("%hhd", &src2.rows[r / 4].cols[c * 4 + r % 4]);
+        }
     }
+
+    print_bytes8x32(&src1);
+    print_bytes8x32(&src2);
 
     // Init dst matrix buffers with data
     init_dword8x8(&res, 0);
@@ -189,6 +195,15 @@ int main() {
 
     printf("======== amx\n");
     print_dword8x8(&res);
+
+    int errors = 0;
+    for (int i = 0; i < MAX_DST_64; ++i) {
+        int32_t s;
+        scanf("%d", &s);
+        if (res.dwords[i] != s) errors++;
+    }
+
+    printf("errors: %d\n", errors);
 
     printf("======== no-amx\n");
     naive_dpb(&res, &src1, &src2);
