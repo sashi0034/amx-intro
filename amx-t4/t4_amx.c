@@ -18,6 +18,14 @@
 #define XFEATURE_XTILECFG       17
 #define XFEATURE_XTILEDATA      18
 
+// #define ENABLE_AMX_LOG
+
+#ifdef ENABLE_AMX_LOG
+#define AMX_LOG(fmt, ...) printf(fmt, ##__VA_ARGS__); fflush(stdout)
+#else
+#define AMX_LOG(fmt, ...) (void)fmt // Do nothing
+#endif
+
 //Define tile config data structure
 typedef struct { // __tile_config
     uint8_t palette_id;
@@ -70,85 +78,22 @@ static void init_tile_config(tile_config *tile) {
     tile->colsb[3] = MAX_COLS_32;
     tile->rows[3] = MAX_ROWS_8;
 
-    printf("Tile load start...\n");
-    fflush(stdout);
+    AMX_LOG("Tile load start...\n");
 
     _tile_loadconfig(tile);
 
-    printf("Tile load end\n");
-    fflush(stdout);
-}
-
-// Initialize 8x32 bytes buffer
-static void init_bytes8x32(Bytes8x32 *buf, int8_t value) {
-    for (int i = 0; i < MAX_ROWS_8; i++) {
-        for (int j = 0; j < MAX_COLS_32; j++) {
-            buf->rows[i].cols[j] = value;
-        }
-    }
-}
-
-// Initialize 8x8 dword buffer
-static void init_dword8x8(Dword8x8 *buf, int32_t value) {
-    for (int i = 0; i < MAX_ROWS_8; i++) {
-        for (int j = 0; j < MAX_ROWS_8; j++) {
-            buf->rows[i].cols[j] = value;
-        }
-    }
-}
-
-static void naive_dpb(Dword8x8 *dst, Bytes8x32 *a, Bytes8x32 *b) {
-    for (int m = 0; m < MAX_ROWS_8; ++m) {
-        for (int n = 0; n < MAX_ROWS_8; ++n) {
-            dst->rows[m].cols[n] = 0;
-
-            for (int k = 0; k < MAX_COLS_32 / 4; ++k) { // [0, 7]
-                dst->rows[m].cols[n] += a->rows[m].cols[k * 4 + 0] * b->rows[k].cols[n * 4 + 0];
-                dst->rows[m].cols[n] += a->rows[m].cols[k * 4 + 1] * b->rows[k].cols[n * 4 + 1];
-                dst->rows[m].cols[n] += a->rows[m].cols[k * 4 + 2] * b->rows[k].cols[n * 4 + 2];
-                dst->rows[m].cols[n] += a->rows[m].cols[k * 4 + 3] * b->rows[k].cols[n * 4 + 3];
-            }
-        }
-    }
+    AMX_LOG("Tile load end\n");
 }
 
 // Set_tiledata_use() - Invoke syscall to set ARCH_SET_STATE_USE
 static bool set_tiledata_use() {
     if (syscall(SYS_arch_prctl, ARCH_REQ_XCOMP_PERM, XFEATURE_XTILEDATA)) {
-        printf("\n Fail to do XFEATURE_XTILEDATA \n\n");
+        AMX_LOG("\n Fail to do XFEATURE_XTILEDATA \n\n");
         return false;
     } else {
-        printf("\n TILE DATA USE SET - OK \n\n");
+        AMX_LOG("\n TILE DATA USE SET - OK \n\n");
         return true;
     }
-
-    return true;
-}
-
-// Print int8_t buffer
-static void print_bytes8x32(const Bytes8x32 *buf) {
-    for (int i = 0; i < MAX_ROWS_8; i++) {
-        for (int j = 0; j < MAX_COLS_32; j++) {
-            printf("%d ", buf->rows[i].cols[j]);
-        }
-
-        printf("\n");
-    }
-
-    printf("\n");
-}
-
-/* Print int32_t buffer */
-static void print_dword8x8(const Dword8x8 *buf) {
-    for (int i = 0; i < MAX_ROWS_8; i++) {
-        for (int j = 0; j < MAX_ROWS_8; j++) {
-            printf("%d ", buf->rows[i].cols[j]);
-        }
-
-        printf("\n");
-    }
-
-    printf("\n");
 }
 
 int main() {
@@ -184,7 +129,7 @@ int main() {
             }
         }
 
-        init_dword8x8(&test->c, 0);
+        // init_dword8x8(&test->c, 0);
     }
 
     for (int t = 0; t < test_cases; ++t) {
@@ -214,9 +159,6 @@ int main() {
     }
 
     printf("Errors: %d\n", errors);
-
-//    naive_dpb(&res, &src1, &src2);
-//    print_dword8x8(&res);
 
     // Release the tile configuration to return to the init state,
     // which releases all storage it currently holds
