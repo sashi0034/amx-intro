@@ -49,7 +49,7 @@ typedef struct {
     };
 } Dword8x8;
 
-/* Initialize tile config */
+// Initialize tile config
 static void init_tile_config(__tilecfg *tileinfo) {
     int i;
     tileinfo->palette_id = 1;
@@ -146,9 +146,11 @@ static void print_dword8x8(const Dword8x8 *buf) {
 }
 
 int main() {
+    int test_cases;
+    scanf("%d", &test_cases);
+    printf("Test cases: %d\n", test_cases);
+
     __tilecfg tile_data = {0};
-//    int8_t src1[MAX_SRC_256];
-//    int8_t src2[MAX_SRC_256];
 
     Bytes8x32 src1;
     Bytes8x32 src2;
@@ -163,16 +165,13 @@ int main() {
     init_tile_config(&tile_data);
 
     // Init src matrix buffers with data
-    init_bytes8x32(&src1, 0);
-    init_bytes8x32(&src2, 0);
-
     for (int i = 0; i < MAX_SRC_256; ++i) {
-        src1.bytes[i] = i;
-        src2.bytes[i] = i;
+        scanf("%hhd", &src1.bytes[i]);
     }
 
-    print_bytes8x32(&src1);
-    // print_buffer(src2, colsb, rows);
+    for (int i = 0; i < MAX_SRC_256; ++i) {
+        scanf("%hhd", &src2.bytes[i]);
+    }
 
     // Init dst matrix buffers with data
     init_dword8x8(&res, 0);
