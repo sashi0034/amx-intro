@@ -19,13 +19,13 @@
 #define XFEATURE_XTILEDATA      18
 
 //Define tile config data structure
-typedef struct __tile_config {
+typedef struct { // __tile_config
     uint8_t palette_id;
     uint8_t start_row;
     uint8_t reserved_0[14];
     uint16_t colsb[16];
     uint8_t rows[16];
-} __tilecfg;
+} tile_config;
 
 typedef struct {
     int8_t cols[32];
@@ -49,25 +49,31 @@ typedef struct {
     };
 } Dword8x8;
 
+typedef struct {
+    Bytes8x32 a;
+    Bytes8x32 b;
+    Dword8x8 c;
+} MatrixTuple;
+
 // Initialize tile config
-static void init_tile_config(__tilecfg *tileinfo) {
+static void init_tile_config(tile_config *tile) {
     int i;
-    tileinfo->palette_id = 1;
-    tileinfo->start_row = 0;
+    tile->palette_id = 1;
+    tile->start_row = 0;
 
-    tileinfo->colsb[1] = MAX_ROWS_8 * DWORD_SIZE_4;
-    tileinfo->rows[1] = MAX_ROWS_8;
+    tile->colsb[1] = MAX_ROWS_8 * DWORD_SIZE_4;
+    tile->rows[1] = MAX_ROWS_8;
 
-    tileinfo->colsb[2] = MAX_COLS_32;
-    tileinfo->rows[2] = MAX_ROWS_8;
+    tile->colsb[2] = MAX_COLS_32;
+    tile->rows[2] = MAX_ROWS_8;
 
-    tileinfo->colsb[3] = MAX_COLS_32;
-    tileinfo->rows[3] = MAX_ROWS_8;
+    tile->colsb[3] = MAX_COLS_32;
+    tile->rows[3] = MAX_ROWS_8;
 
     printf("Tile load start...\n");
     fflush(stdout);
 
-    _tile_loadconfig(tileinfo);
+    _tile_loadconfig(tile);
 
     printf("Tile load end\n");
     fflush(stdout);
@@ -150,12 +156,10 @@ int main() {
     scanf("%d", &test_cases);
     printf("Test cases: %d\n", test_cases);
 
-    __tilecfg tile_data = {0};
+    tile_config tile_data = {0};
 
-    Bytes8x32 src1;
-    Bytes8x32 src2;
-
-    Dword8x8 res;
+    // Allocate memory for test cases
+    MatrixTuple *test_array = (MatrixTuple *) malloc(test_cases * sizeof(MatrixTuple));
 
     // Request permission to linux kernel to run AMX
     if (!set_tiledata_use())
@@ -164,53 +168,62 @@ int main() {
     // Load tile configuration
     init_tile_config(&tile_data);
 
-    // Init src matrix buffers with data
-    for (int i = 0; i < MAX_SRC_256; ++i) {
-        scanf("%hhd", &src1.bytes[i]);
+    // Load test cases for matrix product
+    for (int t = 0; t < test_cases; ++t) {
+        MatrixTuple *test = &test_array[t];
+        Bytes8x32 *a = &test->a;
+        Bytes8x32 *b = &test->b;
+        for (int i = 0; i < MAX_SRC_256; ++i) {
+            scanf("%hhd", &a->bytes[i]);
+        }
+
+        for (int r = 0; r < MAX_COLS_32; r++) {
+            for (int c = 0; c < MAX_ROWS_8; ++c) {
+                // Note: The other matrix used in the AMX matrix product calculation is an irregular arrangement
+                scanf("%hhd", &b->rows[r / 4].cols[c * 4 + r % 4]);
+            }
+        }
+
+        init_dword8x8(&test->c, 0);
     }
 
-    for (int r = 0; r < MAX_COLS_32; r++) {
-        for (int c = 0; c < MAX_ROWS_8; ++c) {
-            // Note: The other matrix used in the AMX matrix product calculation is an irregular arrangement
-            scanf("%hhd", &src2.rows[r / 4].cols[c * 4 + r % 4]);
+    for (int t = 0; t < test_cases; ++t) {
+        // Load tile rows from memory
+        MatrixTuple *test = &test_array[t];
+        _tile_loadd(2, test->a.bytes, STRIDE_32);
+        _tile_loadd(3, test->b.bytes, STRIDE_32);
+        _tile_loadd(1, test->c.dwords, STRIDE_32);
+
+        // Compute dot-product of bytes in tiles
+        _tile_dpbssd(1, 2, 3);
+
+        // Store the tile data to memory
+        _tile_stored(1, test->c.dwords, STRIDE_32);
+    }
+
+    int errors = 0;
+    for (int t = 0; t < test_cases; ++t) {
+        // Load tile rows from memory
+        MatrixTuple *test = &test_array[t];
+
+        for (int i = 0; i < MAX_DST_64; ++i) {
+            int32_t s;
+            scanf("%d", &s);
+            if (test->c.dwords[i] != s) errors++;
         }
     }
 
-    print_bytes8x32(&src1);
-    print_bytes8x32(&src2);
+    printf("Errors: %d\n", errors);
 
-    // Init dst matrix buffers with data
-    init_dword8x8(&res, 0);
-
-    // Load tile rows from memory
-    _tile_loadd(2, src1.bytes, STRIDE_32);
-    _tile_loadd(3, src2.bytes, STRIDE_32);
-    _tile_loadd(1, res.dwords, STRIDE_32);
-
-    // Compute dot-product of bytes in tiles
-    _tile_dpbssd(1, 2, 3);
-
-    // Store the tile data to memory
-    _tile_stored(1, res.dwords, STRIDE_32);
-
-    printf("======== amx\n");
-    print_dword8x8(&res);
-
-    int errors = 0;
-    for (int i = 0; i < MAX_DST_64; ++i) {
-        int32_t s;
-        scanf("%d", &s);
-        if (res.dwords[i] != s) errors++;
-    }
-
-    printf("errors: %d\n", errors);
-
-    printf("======== no-amx\n");
-    naive_dpb(&res, &src1, &src2);
-    print_dword8x8(&res);
+//    naive_dpb(&res, &src1, &src2);
+//    print_dword8x8(&res);
 
     // Release the tile configuration to return to the init state,
     // which releases all storage it currently holds
     _tile_release();
+
+    free(test_array);
+
+    return 0;
 }
 
