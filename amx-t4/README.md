@@ -17,6 +17,14 @@ VTune プロファイル
 
 アセンブリ確認
 
+- AMX
+
+```
+icc -O3 -S t4_amx.c -o build/t4_amx.s
+```
+
+- AVX-512
+
 ```
 icc -g -xCORE-AVX512 -qopt-zmm-usage=high -O3 -S t4_avx512.c -o build/t4_avx512.s
 ```
