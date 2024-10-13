@@ -3,7 +3,7 @@
 #include <array>
 #include <cstdlib>
 #include <ctime>
-#include <iomanip>
+#include <fstream>
 
 constexpr int TEST_CASES = 50;
 
@@ -47,39 +47,20 @@ MatrixC multiply(const MatrixA &a, const MatrixB &b) {
     return result;
 }
 
-template<typename MatrixType>
-void printMatrix(const MatrixType &matrix) {
-    for (const auto &row: matrix) {
-        for (const auto &elem: row) {
-            std::cout << "0x"
-                      << std::setw(2) << std::setfill('0') << std::hex << (static_cast<uint32_t>(elem) & 0xFF)
-                      << ", ";
-        }
-        // std::cout << std::endl;
-    }
-}
-
-void printMatrixC(const MatrixC &matrix) {
-    for (const auto &row: matrix) {
-        for (const auto &elem: row) {
-            std::cout << std::dec << elem << ", ";
-        }
-        // std::cout << std::endl;
-    }
-}
-
 int main() {
     // Random seed
     std::srand(std::time(0));
 
-    std::cout << "#include \"test_cases.h\"\n\n";
-
-    std::cout << "int test_count = " << TEST_CASES << ";\n\n";
-
-    std::cout << "int8_t test_input_bytes[] = {\n\t";
-
     std::vector<MatrixC> results;
     results.resize(TEST_CASES);
+
+    std::ofstream ofs("test.bin", std::ios::binary);
+    if (!ofs.is_open()) {
+        std::cerr << "Failed to open output file." << std::endl;
+        return 1;
+    }
+
+    ofs.write(reinterpret_cast<const char *>(&TEST_CASES), sizeof(TEST_CASES));
 
     for (int t = 0; t < TEST_CASES; ++t) {
         MatrixA matrixA;
@@ -87,26 +68,16 @@ int main() {
         generateMatrixA(matrixA);
         generateMatrixB(matrixB);
 
-        printMatrix(matrixA);
-        // std::cout << std::endl;
-
-        printMatrix(matrixB);
-        // std::cout << std::endl;
+        ofs.write(reinterpret_cast<const char *>(matrixA.data()), sizeof(matrixA));
+        ofs.write(reinterpret_cast<const char *>(matrixB.data()), sizeof(matrixB));
 
         results[t] = multiply(matrixA, matrixB);
     }
 
-    std::cout << "\n};\n" << std::endl;
-
-    std::cout << "int32_t test_result_dwords[] = {\n\t";
-
     for (int t = 0; t < TEST_CASES; ++t) {
-        printMatrixC(results[t]);
+        ofs.write(reinterpret_cast<const char *>(results[t].data()), sizeof(results[t]));
     }
 
-    std::cout << "\n};\n\n";
-
-    std::cout << std::endl;
-
+    ofs.close();
     return 0;
 }

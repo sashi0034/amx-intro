@@ -96,15 +96,51 @@ static bool set_tiledata_use() {
     }
 }
 
+typedef struct {
+    int cases;
+    int8_t *input_buffer;
+    int32_t *result_buffer;
+} TestBuffer;
+
+static bool read_test_buffer(TestBuffer *test_buffer) {
+    FILE *file = fopen("test.bin", "rb");
+    if (file == NULL) {
+        fprintf(stderr, "Failed to open file\n");
+        return false;
+    }
+
+    fread(&test_buffer->cases, sizeof(test_buffer->cases), 1, file);
+    printf("Test cases: %d\n", test_buffer->cases);
+
+    test_buffer->input_buffer = (int8_t *) malloc(test_buffer->cases * (MAX_SRC_256 * 2) * sizeof(int8_t));
+    fread(test_buffer->input_buffer, sizeof(int8_t), test_buffer->cases * (MAX_SRC_256 * 2), file);
+
+    test_buffer->result_buffer = (int32_t *) malloc(test_buffer->cases * (MAX_DST_64) * sizeof(int32_t));
+    fread(test_buffer->result_buffer, sizeof(int32_t), test_buffer->cases * (MAX_DST_64), file);
+
+    fclose(file);
+    return true;
+}
+
+static void init_dword8x8(Dword8x8 *mat, int32_t value) {
+    for (int i = 0; i < 8; i++) {
+        for (int j = 0; j < 8; j++) {
+            mat->rows[i].cols[j] = value;
+        }
+    }
+}
+
 int main() {
-    int test_cases;
-    scanf("%d", &test_cases);
-    printf("Test cases: %d\n", test_cases);
+    TestBuffer test;
+    if (!read_test_buffer(&test)) {
+        printf("Failed to read test buffer\n");
+        return -1;
+    }
 
     tile_config tile_data = {0};
 
     // Allocate memory for test cases
-    MatrixTuple *test_array = (MatrixTuple *) malloc(test_cases * sizeof(MatrixTuple));
+    MatrixTuple *test_array = (MatrixTuple *) malloc(test.cases * sizeof(MatrixTuple));
 
     // Request permission to linux kernel to run AMX
     if (!set_tiledata_use())
@@ -114,47 +150,51 @@ int main() {
     init_tile_config(&tile_data);
 
     // Load test cases for matrix product
-    for (int t = 0; t < test_cases; ++t) {
-        MatrixTuple *test = &test_array[t];
-        Bytes8x32 *a = &test->a;
-        Bytes8x32 *b = &test->b;
+    for (int t = 0; t < test.cases; ++t) {
+        MatrixTuple *mat = &test_array[t];
+        Bytes8x32 *a = &mat->a;
+        Bytes8x32 *b = &mat->b;
+
         for (int i = 0; i < MAX_SRC_256; ++i) {
-            scanf("%hhd", &a->bytes[i]);
+            a->bytes[i] = *(test.input_buffer++);
         }
 
         for (int r = 0; r < MAX_COLS_32; r++) {
             for (int c = 0; c < MAX_ROWS_8; ++c) {
                 // Note: The other matrix used in the AMX matrix product calculation is an irregular arrangement
-                scanf("%hhd", &b->rows[r / 4].cols[c * 4 + r % 4]);
+                b->rows[r / 4].cols[c * 4 + r % 4] = *(test.input_buffer++);
             }
         }
 
-        // init_dword8x8(&test->c, 0);
+        init_dword8x8(&mat->c, 0);
     }
 
-    for (int t = 0; t < test_cases; ++t) {
+    for (int t = 0; t < test.cases; ++t) {
         // Load tile rows from memory
-        MatrixTuple *test = &test_array[t];
-        _tile_loadd(2, test->a.bytes, STRIDE_32);
-        _tile_loadd(3, test->b.bytes, STRIDE_32);
-        _tile_loadd(1, test->c.dwords, STRIDE_32);
+        MatrixTuple *mat = &test_array[t];
+        _tile_loadd(2, mat->a.bytes, STRIDE_32);
+        _tile_loadd(3, mat->b.bytes, STRIDE_32);
+        _tile_loadd(1, mat->c.dwords, STRIDE_32);
 
         // Compute dot-product of bytes in tiles
         _tile_dpbssd(1, 2, 3);
 
         // Store the tile data to memory
-        _tile_stored(1, test->c.dwords, STRIDE_32);
+        _tile_stored(1, mat->c.dwords, STRIDE_32);
     }
 
     int errors = 0;
-    for (int t = 0; t < test_cases; ++t) {
+    for (int t = 0; t < test.cases; ++t) {
         // Load tile rows from memory
-        MatrixTuple *test = &test_array[t];
+        MatrixTuple *mat = &test_array[t];
 
         for (int i = 0; i < MAX_DST_64; ++i) {
-            int32_t s;
-            scanf("%d", &s);
-            if (test->c.dwords[i] != s) errors++;
+            int32_t r = *(test.result_buffer++);
+
+            if (mat->c.dwords[i] != r) {
+                errors++;
+                printf("Error at test case %d, index %d: %d != %d\n", t, i, mat->c.dwords[i], r);
+            }
         }
     }
 
