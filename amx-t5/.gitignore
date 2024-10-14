@@ -1,2 +1,5 @@
 build
 test.bin
+result_amx.*
+result_avx512.*
+result_noamx.*

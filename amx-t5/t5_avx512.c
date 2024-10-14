@@ -100,50 +100,62 @@ static bool read_test_buffer(TestBuffer *test_buffer) {
     return true;
 }
 
-int main() {
-    TestBuffer test;
-    if (!read_test_buffer(&test)) {
-        printf("Failed to read test buffer\n");
-        return -1;
-    }
-
-    // Allocate memory for test cases
-    MatrixTuple *test_array = (MatrixTuple *) malloc(test.cases * sizeof(MatrixTuple));
-
-    // Load test cases for matrix product
-    for (int t = 0; t < test.cases; ++t) {
+static void init_all_tests_from_buffer(MatrixTuple *test_array, TestBuffer *buffer) {
+    for (int t = 0; t < buffer->cases; ++t) {
         MatrixTuple *mat = &test_array[t];
         Bytes8x32 *a = &mat->a;
         Bytes32x8 *b = &mat->b;
         for (int i = 0; i < MAX_SRC_256; ++i) {
-            a->bytes[i] = *(test.input_buffer++);
+            a->bytes[i] = *(buffer->input_buffer++);
         }
 
         for (int i = 0; i < MAX_SRC_256; ++i) {
-            b->bytes[i] = *(test.input_buffer++);
+            b->bytes[i] = *(buffer->input_buffer++);
         }
 
         init_dword8x8(&mat->c, 0);
     }
+}
 
-    for (int t = 0; t < test.cases; ++t) {
-        // Load test from memory
+static void compute_all_tests(MatrixTuple *test_array, int cases) {
+    for (int t = 0; t < cases; ++t) {
         MatrixTuple *mat = &test_array[t];
         compute_dot_product(&mat->c, &mat->a, &mat->b);
     }
+}
 
+static void check_result_validation(const MatrixTuple *test_array, TestBuffer *buffer) {
     int errors = 0;
-    for (int t = 0; t < test.cases; ++t) {
-        // Load test from memory
-        MatrixTuple *mat = &test_array[t];
+    for (int t = 0; t < (*buffer).cases; ++t) {
+        const MatrixTuple *mat = &test_array[t];
 
         for (int i = 0; i < MAX_DST_64; ++i) {
-            int32_t r = *(test.result_buffer++);
+            int32_t r = *((*buffer).result_buffer++);
             if (mat->c.dwords[i] != r) errors++;
         }
     }
 
     printf("Errors: %d\n", errors);
+}
+
+int main() {
+    TestBuffer buffer;
+    if (!read_test_buffer(&buffer)) {
+        printf("Failed to read test buffer\n");
+        return -1;
+    }
+
+    // Allocate memory for test cases
+    MatrixTuple *test_array = (MatrixTuple *) malloc(buffer.cases * sizeof(MatrixTuple));
+
+    // Load test cases for matrix product
+    init_all_tests_from_buffer(test_array, &buffer);
+
+    // Compute dot product for each test case
+    compute_all_tests(test_array, buffer.cases);
+
+    // Check if the result is correct
+    check_result_validation(test_array, &buffer);
 
     free(test_array);
 

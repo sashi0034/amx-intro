@@ -34,14 +34,21 @@ icc -g -xCORE-AVX512 -qopt-zmm-usage=high -O3 t5_avx512.c -o build/t5_avx512 && 
 ```sh
 icc -g -O3 t5_amx.c -o build/t5_amx && \
 module load intel-vtune && \
-tssrun -p gr10034a vtune -collect hotspots  -r=./result_amx build/t5_amx < build/test.txt
+tssrun -p gr10034a vtune -collect hotspots  -r=./result_amx build/t5_amx
 ```
 
 AVX-512
 ```sh
 icc -g -xCORE-AVX512 -qopt-zmm-usage=high -O3 t5_avx512.c -o build/t5_avx512 && \
 module load intel-vtune && \
-tssrun -p gr10034a vtune -collect hotspots  -r=./result_t5_avx512 build/t5_avx512 < build/test.txt
+tssrun -p gr10034a vtune -collect hotspots  -r=./result_avx512 build/t5_avx512
+```
+
+No-AMX
+```sh
+icc -g -O3 t5_avx512.c -o build/t5_noamx && \
+module load intel-vtune && \
+tssrun -p gr10034a vtune -collect hotspots  -r=./result_noamx build/t5_noamx
 ```
 
 # テスト生成

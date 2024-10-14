@@ -96,6 +96,14 @@ static bool set_tiledata_use() {
     }
 }
 
+static void init_dword8x8(Dword8x8 *mat, int32_t value) {
+    for (int i = 0; i < 8; i++) {
+        for (int j = 0; j < 8; j++) {
+            mat->rows[i].cols[j] = value;
+        }
+    }
+}
+
 typedef struct {
     int cases;
     int8_t *input_buffer;
@@ -122,55 +130,29 @@ static bool read_test_buffer(TestBuffer *test_buffer) {
     return true;
 }
 
-static void init_dword8x8(Dword8x8 *mat, int32_t value) {
-    for (int i = 0; i < 8; i++) {
-        for (int j = 0; j < 8; j++) {
-            mat->rows[i].cols[j] = value;
-        }
-    }
-}
-
-int main() {
-    TestBuffer test;
-    if (!read_test_buffer(&test)) {
-        printf("Failed to read test buffer\n");
-        return -1;
-    }
-
-    tile_config tile_data = {0};
-
-    // Allocate memory for test cases
-    MatrixTuple *test_array = (MatrixTuple *) malloc(test.cases * sizeof(MatrixTuple));
-
-    // Request permission to linux kernel to run AMX
-    if (!set_tiledata_use())
-        exit(-1);
-
-    // Load tile configuration
-    init_tile_config(&tile_data);
-
-    // Load test cases for matrix product
-    for (int t = 0; t < test.cases; ++t) {
+static void init_all_tests_from_buffer(MatrixTuple *test_array, TestBuffer *buffer) {
+    for (int t = 0; t < buffer->cases; ++t) {
         MatrixTuple *mat = &test_array[t];
         Bytes8x32 *a = &mat->a;
         Bytes8x32 *b = &mat->b;
 
         for (int i = 0; i < MAX_SRC_256; ++i) {
-            a->bytes[i] = *(test.input_buffer++);
+            a->bytes[i] = *(buffer->input_buffer++);
         }
 
         for (int r = 0; r < MAX_COLS_32; r++) {
             for (int c = 0; c < MAX_ROWS_8; ++c) {
                 // Note: The other matrix used in the AMX matrix product calculation is an irregular arrangement
-                b->rows[r / 4].cols[c * 4 + r % 4] = *(test.input_buffer++);
+                b->rows[r / 4].cols[c * 4 + r % 4] = *(buffer->input_buffer++);
             }
         }
 
         init_dword8x8(&mat->c, 0);
     }
+}
 
-    for (int t = 0; t < test.cases; ++t) {
-        // Load tile rows from memory
+static void compute_all_tests(MatrixTuple *test_array, int cases) {
+    for (int t = 0; t < cases; ++t) {
         MatrixTuple *mat = &test_array[t];
         _tile_loadd(2, mat->a.bytes, STRIDE_32);
         _tile_loadd(3, mat->b.bytes, STRIDE_32);
@@ -182,26 +164,51 @@ int main() {
         // Store the tile data to memory
         _tile_stored(1, mat->c.dwords, STRIDE_32);
     }
+}
 
+static void check_result_validation(const MatrixTuple *test_array, TestBuffer *buffer) {
     int errors = 0;
-    for (int t = 0; t < test.cases; ++t) {
-        // Load tile rows from memory
-        MatrixTuple *mat = &test_array[t];
+    for (int t = 0; t < (*buffer).cases; ++t) {
+        const MatrixTuple *mat = &test_array[t];
 
         for (int i = 0; i < MAX_DST_64; ++i) {
-            int32_t r = *(test.result_buffer++);
-
-            if (mat->c.dwords[i] != r) {
-                errors++;
-                printf("Error at test case %d, index %d: %d != %d\n", t, i, mat->c.dwords[i], r);
-            }
+            int32_t r = *((*buffer).result_buffer++);
+            if (mat->c.dwords[i] != r) errors++;
         }
     }
 
     printf("Errors: %d\n", errors);
+}
 
-    // Release the tile configuration to return to the init state,
-    // which releases all storage it currently holds
+int main() {
+    TestBuffer buffer;
+    if (!read_test_buffer(&buffer)) {
+        printf("Failed to read test buffer\n");
+        return -1;
+    }
+
+    tile_config tile_data = {0};
+
+    // Allocate memory for test cases
+    MatrixTuple *test_array = (MatrixTuple *) malloc(buffer.cases * sizeof(MatrixTuple));
+
+    // Request permission to linux kernel to run AMX
+    if (!set_tiledata_use())
+        exit(-1);
+
+    // Load tile configuration
+    init_tile_config(&tile_data);
+
+    // Load test cases for matrix product
+    init_all_tests_from_buffer(test_array, &buffer);
+
+    // Compute dot product for each test case
+    compute_all_tests(test_array, buffer.cases);
+
+    // // Check if the result is correct
+    check_result_validation(test_array, &buffer);
+
+    // Release the tile configuration to return to the init state, which releases all storage it currently holds
     _tile_release();
 
     free(test_array);

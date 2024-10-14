@@ -5,7 +5,7 @@
 #include <ctime>
 #include <fstream>
 
-constexpr int TEST_CASES = 50;
+constexpr int TEST_CASES = 500000;
 
 constexpr int ROWS_A_8 = 8;
 constexpr int COLS_A_32 = 32;
