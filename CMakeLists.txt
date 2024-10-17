@@ -12,3 +12,5 @@ add_subdirectory(amx-t3)
 add_subdirectory(amx-t4)
 
 add_subdirectory(amx-t5)
+
+add_subdirectory(amx-t6)
