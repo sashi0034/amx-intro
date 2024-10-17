@@ -19,23 +19,6 @@
 #define XFEATURE_XTILECFG       17
 #define XFEATURE_XTILEDATA      18
 
-// #define ENABLE_AMX_LOG
-
-#ifdef ENABLE_AMX_LOG
-#define AMX_LOG(fmt, ...) printf(fmt, ##__VA_ARGS__); fflush(stdout)
-#else
-#define AMX_LOG(fmt, ...) (void)fmt // Do nothing
-#endif
-
-//Define tile config data structure
-typedef struct { // __tile_config
-    uint8_t palette_id;
-    uint8_t start_row;
-    uint8_t reserved_0[14];
-    uint16_t colsb[16];
-    uint8_t rows[16];
-} tile_config;
-
 typedef struct {
     int8_t cols[32];
 } Bytes32;
@@ -63,39 +46,6 @@ typedef struct {
     Bytes8x32 b;
     Dword8x8 c;
 } MatrixTuple;
-
-// Initialize tile config
-static void init_tile_config(tile_config *tile) {
-    int i;
-    tile->palette_id = 1;
-    tile->start_row = 0;
-
-    tile->colsb[1] = MAX_ROWS_8 * DWORD_SIZE_4;
-    tile->rows[1] = MAX_ROWS_8;
-
-    tile->colsb[2] = MAX_COLS_32;
-    tile->rows[2] = MAX_ROWS_8;
-
-    tile->colsb[3] = MAX_COLS_32;
-    tile->rows[3] = MAX_ROWS_8;
-
-    AMX_LOG("Tile load start...\n");
-
-    _tile_loadconfig(tile);
-
-    AMX_LOG("Tile load end\n");
-}
-
-// Set_tiledata_use() - Invoke syscall to set ARCH_SET_STATE_USE
-static bool set_tiledata_use() {
-    if (syscall(SYS_arch_prctl, ARCH_REQ_XCOMP_PERM, XFEATURE_XTILEDATA)) {
-        AMX_LOG("\n Fail to do XFEATURE_XTILEDATA \n\n");
-        return false;
-    } else {
-        AMX_LOG("\n TILE DATA USE SET - OK \n\n");
-        return true;
-    }
-}
 
 static void init_dword8x8(Dword8x8 *mat, int32_t value) {
     for (int i = 0; i < 8; i++) {
@@ -152,18 +102,6 @@ static void init_all_tests_from_buffer(MatrixTuple *test_array, TestBuffer *buff
     }
 }
 
-static void dpb_amx(MatrixTuple *mat) {
-    _tile_loadd(2, mat->a.bytes, STRIDE_32);
-    _tile_loadd(3, mat->b.bytes, STRIDE_32);
-    _tile_loadd(1, mat->c.dwords, STRIDE_32);
-
-    // Compute dot-product of bytes in tiles
-    _tile_dpbssd(1, 2, 3);
-
-    // Store the tile data to memory
-    _tile_stored(1, mat->c.dwords, STRIDE_32);
-}
-
 static void dpb_naive(MatrixTuple *mat) {
     Dword8x8 *dst = &mat->c;
     Bytes8x32 *a = &mat->a;
@@ -184,28 +122,11 @@ static void dpb_naive(MatrixTuple *mat) {
 }
 
 static void compute_all_tests(MatrixTuple *test_array, int cases) {
+// #pragma omp parallel for
     omp_set_num_threads(10);
 #pragma omp parallel for schedule(dynamic)
     for (int t = 0; t < cases; ++t) {
-        const int thread_id = omp_get_thread_num();
-        if (thread_id == 0) {
-            // Note: この部分を関数化すると、最適化フラグによって正しい結果が得られないことがあった。
-            // そのため、関数化せずにインライン展開しているが、なぜうまくいかないかを調査するためにアセンブリを確認したい。
-            // dpb_amx(&test_array[t]);
-
-            MatrixTuple *mat = &test_array[t];
-            _tile_loadd(2, mat->a.bytes, STRIDE_32);
-            _tile_loadd(3, mat->b.bytes, STRIDE_32);
-            _tile_loadd(1, mat->c.dwords, STRIDE_32);
-
-            // Compute dot-product of bytes in tiles
-            _tile_dpbssd(1, 2, 3);
-
-            // Store the tile data to memory
-            _tile_stored(1, mat->c.dwords, STRIDE_32);
-        } else {
-            dpb_naive(&test_array[t]);
-        }
+        dpb_naive(&test_array[t]);
     }
 }
 
@@ -230,17 +151,8 @@ int main() {
         return -1;
     }
 
-    tile_config tile_data = {0};
-
     // Allocate memory for test cases
     MatrixTuple *test_array = (MatrixTuple *) malloc(buffer.cases * sizeof(MatrixTuple));
-
-    // Request permission to linux kernel to run AMX
-    if (!set_tiledata_use())
-        exit(-1);
-
-    // Load tile configuration
-    init_tile_config(&tile_data);
 
     // Load test cases for matrix product
     init_all_tests_from_buffer(test_array, &buffer);
@@ -250,9 +162,6 @@ int main() {
 
     // // Check if the result is correct
     check_result_validation(test_array, &buffer);
-
-    // Release the tile configuration to return to the init state, which releases all storage it currently holds
-    _tile_release();
 
     free(test_array);
 

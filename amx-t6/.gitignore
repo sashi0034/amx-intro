@@ -1,1 +1,4 @@
 build
+test.bin
+result_t6_noamx.*
+result_t6_amx.*
