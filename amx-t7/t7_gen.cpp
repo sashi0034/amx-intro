@@ -54,7 +54,7 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
-    const int test_cases = std::atoi(argv[1]);
+    const uint64_t test_cases = std::atoi(argv[1]);
 
     std::vector<MatrixC> results;
     results.resize(test_cases);

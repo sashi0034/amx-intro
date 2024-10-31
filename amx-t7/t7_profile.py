@@ -4,7 +4,16 @@ import glob
 import shutil
 
 # Define test cases
-test_cases = [10000, 50000]
+test_cases = [
+    100000,
+    200000,
+    400000,
+    800000,
+    1600000,
+    3200000,
+    6400000,
+    12800000,
+]
 
 
 def clear_results_directory():
@@ -42,7 +51,7 @@ if __name__ == '__main__':
         amx_command = (
             f"icc -g -O3 t7_amx.c -o build/t7_amx && "
             f"module load intel-vtune && "
-            f"tssrun -p gr10034a --rsc m=1G vtune -collect hotspots -r=./results/result_amx_{cases} build/t7_amx"
+            f"tssrun -p gr10034a --rsc m=50G vtune -collect hotspots -r=./results/result_amx_{cases} build/t7_amx"
         )
         run_command(amx_command)
         result_amx_dir = find_latest_result_dir(f"./results/result_amx_{cases}")
@@ -56,7 +65,7 @@ if __name__ == '__main__':
         avx512_command = (
             f"icc -g -xCORE-AVX512 -qopt-zmm-usage=high -O3 t7_noamx.c -o build/t7_avx512 && "
             f"module load intel-vtune && "
-            f"tssrun -p gr10034a --rsc m=1G vtune -collect hotspots -r=./results/result_avx512_{cases} build/t7_avx512"
+            f"tssrun -p gr10034a --rsc m=50G vtune -collect hotspots -r=./results/result_avx512_{cases} build/t7_avx512"
         )
         run_command(avx512_command)
         result_avx512_dir = find_latest_result_dir(f"./results/result_avx512_{cases}")
@@ -70,7 +79,7 @@ if __name__ == '__main__':
         noamx_command = (
             f"icc -g -O3 t7_noamx.c -o build/t7_noamx && "
             f"module load intel-vtune && "
-            f"tssrun -p gr10034a --rsc m=1G vtune -collect hotspots -r=./results/result_noamx_{cases} build/t7_noamx"
+            f"tssrun -p gr10034a --rsc m=50G vtune -collect hotspots -r=./results/result_noamx_{cases} build/t7_noamx"
         )
         run_command(noamx_command)
         result_noamx_dir = find_latest_result_dir(f"./results/result_noamx_{cases}")

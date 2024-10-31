@@ -20,7 +20,7 @@ icc -g -xCORE-AVX512 -qopt-zmm-usage=high -O3 -S t7_noamx.c -o build/t7_avx512.s
 コンパイルしてから実行
 
 ```
-icc -g -O3 t7_amx.c -o build/t7_amx && tssrun -p gr10034a build/t7_amx
+icc -g -O3 t7_amx.c -o build/t7_amx && tssrun -p gr10034a --rsc m=50G build/t7_amx
 ```
 
 ```

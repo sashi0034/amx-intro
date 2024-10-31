@@ -75,7 +75,7 @@ static void compute_dot_product(Dword8x8 *c, Bytes8x32 *a, Bytes32x8 *b) {
 }
 
 typedef struct {
-    int cases;
+    int64_t cases;
     int8_t *input_buffer;
     int32_t *result_buffer;
 } TestBuffer;
@@ -88,7 +88,7 @@ static bool read_test_buffer(TestBuffer *test_buffer) {
     }
 
     fread(&test_buffer->cases, sizeof(test_buffer->cases), 1, file);
-    printf("Test cases: %d\n", test_buffer->cases);
+    printf("Test cases: %ld\n", test_buffer->cases);
 
     test_buffer->input_buffer = (int8_t *) malloc(test_buffer->cases * (MAX_SRC_256 * 2) * sizeof(int8_t));
     fread(test_buffer->input_buffer, sizeof(int8_t), test_buffer->cases * (MAX_SRC_256 * 2), file);
