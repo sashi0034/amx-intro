@@ -185,29 +185,50 @@ static void dpb_naive(MatrixTuple *mat) {
 
 static void compute_all_tests(MatrixTuple *test_array, int cases) {
     omp_set_num_threads(10);
-#pragma omp parallel for schedule(dynamic)
+#pragma omp parallel for schedule(static)
     for (int t = 0; t < cases; ++t) {
-        const int thread_id = omp_get_thread_num();
-        if (thread_id == 0) {
-            // Note: この部分を関数化すると、最適化フラグによって正しい結果が得られないことがあった。
-            // そのため、関数化せずにインライン展開しているが、なぜうまくいかないかを調査するためにアセンブリを確認したい。
-            // dpb_amx(&test_array[t]);
+        // Note: この部分を関数化すると、最適化フラグによって正しい結果が得られないことがあった。
+        // そのため、関数化せずにインライン展開しているが、なぜうまくいかないかを調査するためにアセンブリを確認したい。
+        // dpb_amx(&test_array[t]);
 
-            MatrixTuple *mat = &test_array[t];
-            _tile_loadd(2, mat->a.bytes, STRIDE_32);
-            _tile_loadd(3, mat->b.bytes, STRIDE_32);
-            _tile_loadd(1, mat->c.dwords, STRIDE_32);
+        MatrixTuple *mat = &test_array[t];
+        _tile_loadd(2, mat->a.bytes, STRIDE_32);
+        _tile_loadd(3, mat->b.bytes, STRIDE_32);
+        _tile_loadd(1, mat->c.dwords, STRIDE_32);
 
-            // Compute dot-product of bytes in tiles
-            _tile_dpbssd(1, 2, 3);
+        // Compute dot-product of bytes in tiles
+        _tile_dpbssd(1, 2, 3);
 
-            // Store the tile data to memory
-            _tile_stored(1, mat->c.dwords, STRIDE_32);
-        } else {
-            dpb_naive(&test_array[t]);
-        }
+        // Store the tile data to memory
+        _tile_stored(1, mat->c.dwords, STRIDE_32);
     }
 }
+
+//static void compute_all_tests(MatrixTuple *test_array, int cases) {
+//    omp_set_num_threads(10);
+//#pragma omp parallel for schedule(dynamic)
+//    for (int t = 0; t < cases; ++t) {
+//        const int thread_id = omp_get_thread_num();
+//        if (thread_id == 0) {
+//            // Note: この部分を関数化すると、最適化フラグによって正しい結果が得られないことがあった。
+//            // そのため、関数化せずにインライン展開しているが、なぜうまくいかないかを調査するためにアセンブリを確認したい。
+//            // dpb_amx(&test_array[t]);
+//
+//            MatrixTuple *mat = &test_array[t];
+//            _tile_loadd(2, mat->a.bytes, STRIDE_32);
+//            _tile_loadd(3, mat->b.bytes, STRIDE_32);
+//            _tile_loadd(1, mat->c.dwords, STRIDE_32);
+//
+//            // Compute dot-product of bytes in tiles
+//            _tile_dpbssd(1, 2, 3);
+//
+//            // Store the tile data to memory
+//            _tile_stored(1, mat->c.dwords, STRIDE_32);
+//        } else {
+//            dpb_naive(&test_array[t]);
+//        }
+//    }
+//}
 
 static void check_result_validation(const MatrixTuple *test_array, TestBuffer *buffer) {
     int errors = 0;

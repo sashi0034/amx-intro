@@ -122,9 +122,8 @@ static void dpb_naive(MatrixTuple *mat) {
 }
 
 static void compute_all_tests(MatrixTuple *test_array, int cases) {
-// #pragma omp parallel for
     omp_set_num_threads(10);
-#pragma omp parallel for schedule(dynamic)
+#pragma omp parallel for schedule(static)
     for (int t = 0; t < cases; ++t) {
         dpb_naive(&test_array[t]);
     }
@@ -160,7 +159,7 @@ int main() {
     // Compute dot product for each test case
     compute_all_tests(test_array, buffer.cases);
 
-    // // Check if the result is correct
+    // Check if the result is correct
     check_result_validation(test_array, &buffer);
 
     free(test_array);
