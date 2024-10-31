@@ -45,25 +45,25 @@ if __name__ == "__main__":
             test_cases.setdefault(case_number, {})["AVX512"] = extract_result_from_data(filepath, "compute_dot_product")
         elif noamx_pattern.match(filename):
             case_number = int(noamx_pattern.match(filename).group(1))
-            test_cases.setdefault(case_number, {})["NoAMX"] = extract_result_from_data(filepath, "compute_dot_product")
+            test_cases.setdefault(case_number, {})["No-AMX"] = extract_result_from_data(filepath, "compute_dot_product")
 
     # 各テストケースのデータをリストにまとめる
     sorted_cases = sorted(test_cases.keys())
     for case in sorted_cases:
         amx_times.append(test_cases[case].get("AMX", 0))
         avx512_times.append(test_cases[case].get("AVX512", 0))
-        noamx_times.append(test_cases[case].get("NoAMX", 0))
+        noamx_times.append(test_cases[case].get("No-AMX", 0))
 
     # グラフ作成
     plt.figure(figsize=(10, 6))
     plt.plot(sorted_cases, amx_times, marker='o', label="AMX")
     plt.plot(sorted_cases, avx512_times, marker='o', label="AVX512")
-    plt.plot(sorted_cases, noamx_times, marker='o', label="NoAMX")
+    plt.plot(sorted_cases, noamx_times, marker='o', label="No-AMX")
 
     # グラフの装飾
     plt.xlabel("Test Case Number")
     plt.ylabel("Execution Time (seconds)")
-    plt.title("Execution Time Comparison for AMX, AVX512, and NoAMX")
+    plt.title("Execution Time Comparison for AMX, AVX512, and No-AMX")
     plt.legend()
     plt.grid(True)
 
