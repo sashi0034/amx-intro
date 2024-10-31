@@ -4,7 +4,7 @@
 #include <cstdlib>
 #include <ctime>
 
-constexpr int TEST_CASES = 500000;
+constexpr int test_cases = 500000;
 
 constexpr int ROWS_A_8 = 8;
 constexpr int COLS_A_32 = 32;
@@ -60,12 +60,12 @@ int main() {
     // Random seed
     std::srand(std::time(0));
 
-    std::cout << TEST_CASES << std::endl << std::endl;
+    std::cout << test_cases << std::endl << std::endl;
 
     std::vector<MatrixC> results;
-    results.resize(TEST_CASES);
+    results.resize(test_cases);
 
-    for (int t = 0; t < TEST_CASES; ++t) {
+    for (int t = 0; t < test_cases; ++t) {
         MatrixA matrixA;
         MatrixB matrixB;
         generateMatrixA(matrixA);
@@ -80,7 +80,7 @@ int main() {
         results[t] = multiply(matrixA, matrixB);
     }
 
-    for (int t = 0; t < TEST_CASES; ++t) {
+    for (int t = 0; t < test_cases; ++t) {
         printMatrix(results[t]);
         std::cout << std::endl;
     }

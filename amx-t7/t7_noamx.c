@@ -117,7 +117,7 @@ static void init_all_tests_from_buffer(MatrixTuple *test_array, TestBuffer *buff
     }
 }
 
-static void compute_all_tests(MatrixTuple *test_array, int cases) {
+void compute_all_tests(MatrixTuple *test_array, int cases) {
     for (int t = 0; t < cases; ++t) {
         MatrixTuple *mat = &test_array[t];
         compute_dot_product(&mat->c, &mat->a, &mat->b);

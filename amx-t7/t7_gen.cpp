@@ -5,8 +5,6 @@
 #include <ctime>
 #include <fstream>
 
-constexpr int TEST_CASES = 500000;
-
 constexpr int ROWS_A_8 = 8;
 constexpr int COLS_A_32 = 32;
 constexpr int ROWS_B_32 = COLS_A_32;
@@ -47,12 +45,19 @@ MatrixC multiply(const MatrixA &a, const MatrixB &b) {
     return result;
 }
 
-int main() {
+int main(int argc, char *argv[]) {
     // Random seed
     std::srand(std::time(0));
 
+    if (argc != 2) {
+        std::cerr << "Usage: " << argv[0] << " <test_cases>" << std::endl;
+        return 1;
+    }
+
+    const int test_cases = std::atoi(argv[1]);
+
     std::vector<MatrixC> results;
-    results.resize(TEST_CASES);
+    results.resize(test_cases);
 
     std::ofstream ofs("test.bin", std::ios::binary);
     if (!ofs.is_open()) {
@@ -60,9 +65,9 @@ int main() {
         return 1;
     }
 
-    ofs.write(reinterpret_cast<const char *>(&TEST_CASES), sizeof(TEST_CASES));
+    ofs.write(reinterpret_cast<const char *>(&test_cases), sizeof(test_cases));
 
-    for (int t = 0; t < TEST_CASES; ++t) {
+    for (int t = 0; t < test_cases; ++t) {
         MatrixA matrixA;
         MatrixB matrixB;
         generateMatrixA(matrixA);
@@ -74,7 +79,7 @@ int main() {
         results[t] = multiply(matrixA, matrixB);
     }
 
-    for (int t = 0; t < TEST_CASES; ++t) {
+    for (int t = 0; t < test_cases; ++t) {
         ofs.write(reinterpret_cast<const char *>(results[t].data()), sizeof(results[t]));
     }
 
