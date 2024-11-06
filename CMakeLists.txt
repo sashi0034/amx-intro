@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.28)
 project(amx_intro)
 
-set(CMAKE_CXX_STANDARD 14)
+include_directories("/opt/system/app/intel/2023.2/compiler/2023.2.4/linux/compiler/include/icc")
 
 add_subdirectory(amx-tmul)
 
