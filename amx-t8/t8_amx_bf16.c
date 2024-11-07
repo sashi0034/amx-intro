@@ -5,6 +5,7 @@
 #include <unistd.h>
 #include <stdbool.h>
 #include <immintrin.h>
+#include <memory.h>
 
 #define SRC_ELEMS_128 128
 #define SRC_ROWS_8 8
@@ -161,6 +162,9 @@ void amx_dot_product(MatrixTuple *mat) {
 
     // Store the tile data to memory
     _tile_stored(1, mat->c.fp32s, STRIDE_32);
+
+    // Add a compiler memory barrier to prevent optimization issues
+    __asm__ __volatile__ ("" : "+m" (mat->c.fp32s));
 }
 
 int main() {
