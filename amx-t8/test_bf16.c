@@ -10,7 +10,7 @@
 #include <stdio.h>
 #include <math.h>
 
-int main() {
+int test_1() {
 
     float op1_f32[16];
     float op2_f32[16];
@@ -88,4 +88,12 @@ int main() {
     printf("\n\n");
 
     return 0;
+}
+
+void test_2(){
+
+}
+
+int main() {
+    test_1();
 }
