@@ -29,12 +29,18 @@ int main() {
     // Choose some sample values for arrays
     float v = sqrt(2);
     for (int i = 0; i < 16; i++) {
-        op1_f32[i] = v;
-        op2_f32[i] = v;
-        op3_f32[i] = 0.0;
+        op1_f32[i] = v + i;
+        op2_f32[i] = v + i;
+        // op3_f32[i] = 0.0;
         res_f32[i] = 1.0;
+    }
+
+    for (int i = 0; i < 16; i++) {
         // Compute result of dot product operation using float32 (for comparison with bf16)
-        res_comp_f32[i] = 2.0 * op1_f32[i] * op1_f32[i] + res_f32[i];
+        res_comp_f32[i] = res_f32[i];
+        const int t = 2 * i < 16 ? (2 * i) : (2 * i - 16);
+        res_comp_f32[i] += op1_f32[t + 1] * op2_f32[t + 1];
+        res_comp_f32[i] += op1_f32[t] * op2_f32[t];
     }
 
     // Display input values
@@ -53,7 +59,7 @@ int main() {
     // Load 16 float32 values into registers (data does not need to be aligned on any particular boundary)
     v1_f32 = _mm512_loadu_ps(op1_f32);
     v2_f32 = _mm512_loadu_ps(op2_f32);
-    v3_f32 = _mm512_loadu_ps(op3_f32);
+    // v3_f32 = _mm512_loadu_ps(op3_f32);
     vr_f32 = _mm512_loadu_ps(res_f32);
 
     // Convert two float32 registers (16 values each) to one BF16 register #1 (32 values)
