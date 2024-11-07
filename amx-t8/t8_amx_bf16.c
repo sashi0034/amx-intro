@@ -81,6 +81,79 @@ typedef struct {
     FP32_8x8 c;
 } MatrixTuple;
 
+// -----------------------------------------------
+// Test Matrix
+typedef struct FP32_V16 {
+    fp32_t cols[16];
+} FP32_V16;
+
+typedef struct FP32_8x16 {
+    union {
+        FP32_V16 rows[8];
+        fp32_t fp32s[8 * 16];
+    };
+} FP32_8x16;
+
+typedef struct FP32_16x8 {
+    union {
+        FP32_V8 rows[16];
+        fp32_t fp32s[16 * 8];
+    };
+} FP32_16x8;
+
+void randomize_fp32_128(fp32_t fp32s[restrict SRC_ELEMS_128]) {
+    for (int i = 0; i < SRC_ELEMS_128; ++i) {
+        fp32s[i] = ((fp32_t) rand()) / RAND_MAX;
+    }
+}
+
+void dp_8x16_16x8(FP32_8x8 *c, const FP32_8x16 *a, const FP32_16x8 *b) {
+    for (int row = 0; row < DST_ROWS_8; ++row) {
+        for (int col = 0; col < DST_COLS_8; ++col) {
+            c->rows[row].cols[col] = 0.0f;
+            for (int i = 0; i < SRC_COLS_16; ++i) {
+                c->rows[row].cols[col] += a->rows[row].cols[i] * b->rows[i].cols[col];
+            }
+        }
+    }
+}
+
+void print_fp32_8x16(const FP32_8x16 *mat) {
+    for (int i = 0; i < SRC_ROWS_8; i++) {
+        for (int j = 0; j < SRC_COLS_16; j++) {
+            printf("%f ", mat->rows[i].cols[j]);
+        }
+        printf("\n");
+    }
+}
+
+void print_fp32_16x8(const FP32_16x8 *mat) {
+    for (int i = 0; i < SRC_COLS_16; i++) {
+        for (int j = 0; j < SRC_ROWS_8; j++) {
+            printf("%f ", mat->rows[i].cols[j]);
+        }
+        printf("\n");
+    }
+}
+
+void fp32_8x16_to_bf16_8x16(BF16_8x16 *bf16s, const FP32_8x16 *fp32s) {
+    for (int r = 0; r < SRC_ROWS_8; r++) {
+        for (int c = 0; c < SRC_COLS_16; c++) {
+            bf16s->rows[r].cols[c] = fp32_to_bf16(fp32s->rows[r].cols[c]);
+        }
+    }
+}
+
+void fp32_16x8_to_bf16_8x16(BF16_8x16 *bf16s, const FP32_16x8 *fp32s) {
+    for (int r = 0; r < SRC_COLS_16; r++) {
+        for (int c = 0; c < SRC_ROWS_8; c++) {
+            bf16s->rows[r / 2].cols[c * 2 + r % 2] = fp32_to_bf16(fp32s->rows[r].cols[c]);
+        }
+    }
+}
+
+// -----------------------------------------------
+
 // Initialize tile config
 static void init_tile_config(tile_config *tile) {
     int i;
@@ -174,35 +247,58 @@ int main() {
     if (!set_tiledata_use())
         exit(-1);
 
-    MatrixTuple test_matrix;
+    MatrixTuple amx_matrix;
 
-    init_bf16_8x16(&test_matrix.a, fp32_to_bf16(1.0f));
+    // -----------------------------------------------
 
-    init_bf16_8x16(&test_matrix.b, fp32_to_bf16(1.0f));
+    FP32_8x16 a;
+    FP32_16x8 b;
+    FP32_8x8 c;
 
-    init_fp32_8x8(&test_matrix.c, 0.0f);
+    randomize_fp32_128(a.fp32s);
+    randomize_fp32_128(b.fp32s);
+    dp_8x16_16x8(&c, &a, &b);
+
+    printf("-----------------------------------------------\n");
+    printf("Origin A:\n");
+    print_fp32_8x16(&a);
+
+    printf("-----------------------------------------------\n");
+    printf("Origin B:\n");
+    print_fp32_16x8(&b);
+
+    printf("-----------------------------------------------\n");
+    printf("Origin C:\n");
+    print_fp32_8x8(&c);
+
+    fp32_8x16_to_bf16_8x16(&amx_matrix.a, &a);
+    fp32_16x8_to_bf16_8x16(&amx_matrix.b, &b);
+    // -----------------------------------------------
+
+    init_fp32_8x8(&amx_matrix.c, 0.0f);
 
     // Load tile configuration
     init_tile_config(&tile_data);
 
     printf("-----------------------------------------------\n");
     printf("Matrix A:\n");
-    print_bf16_8x16(&test_matrix.a);
+    print_bf16_8x16(&amx_matrix.a);
 
     printf("-----------------------------------------------\n");
     printf("Matrix B:\n");
-    print_bf16_8x16(&test_matrix.b);
+    print_bf16_8x16(&amx_matrix.b);
 
     // Compute dot product for each test case
-    amx_dot_product(&test_matrix);
+    amx_dot_product(&amx_matrix);
 
     printf("-----------------------------------------------\n");
     printf("Result matrix:\n");
-    print_fp32_8x8(&test_matrix.c);
+    print_fp32_8x8(&amx_matrix.c);
 
     // Release the tile configuration to return to the init state, which releases all storage it currently holds
     _tile_release();
 
+    printf("-----------------------------------------------\n");
     printf("Finished task.\n");
 
     return 0;
