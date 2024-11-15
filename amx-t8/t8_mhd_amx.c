@@ -1114,6 +1114,33 @@ int mlf(float f[restrict NB][NZ2][NY2][NX2],
     return 0;
 }
 
+// -----------------------------------------------
+
+#define SAMPLE_LAYER_N 6
+#define SAMPLE_LAYER_Z (NZ2 / 2)
+
+void print_sample_layer(float f[restrict NB][NZ2][NY2][NX2]) {
+
+    for (int y = 0; y < NY2; y++) {
+        for (int x = 0; x < NX2; x++) {
+            if (f[SAMPLE_LAYER_N][SAMPLE_LAYER_Z][y][x] != 0) {
+                printf("%f ", 1000 * f[SAMPLE_LAYER_N][SAMPLE_LAYER_Z][y][x]);
+            }
+        }
+        printf("\n");
+    }
+//    for (int y = 0; y < NY2; y++) {
+//        for (int x = 0; x < NX2; x++) {
+//            if (f[SAMPLE_LAYER_N][SAMPLE_LAYER_Z][y][x] != 0) {
+//                printf("%f ", f[SAMPLE_LAYER_N][SAMPLE_LAYER_Z][y][x]);
+//            }
+//        }
+//        printf("\n");
+//    }
+}
+
+// -----------------------------------------------
+
 int main() {
     // Time variables
     clock_t zt0, zt1, zt2, zt3;
@@ -1164,6 +1191,13 @@ int main() {
             nupb = 0;
             bdry_up(f, u);
         }
+
+        // -----------------------------------------------
+        if (ii == 8) {
+            printf("----------------------------------------------- %d", ii);
+            print_sample_layer(f);
+        }
+        // -----------------------------------------------
 
         // Finalization part (write data, etc.)
         if (nout == NOUT0) {
