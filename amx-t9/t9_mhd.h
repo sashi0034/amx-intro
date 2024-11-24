@@ -1,8 +1,8 @@
 #ifndef AMX_INTRO_T9_MHD_H
 #define AMX_INTRO_T9_MHD_H
 
-#define NX 198
-#define NY 198
+#define NX 190
+#define NY 190
 #define NZ 248
 
 #define NB 8
@@ -11,8 +11,10 @@
 
 #define NX1 (NX + 1)
 #define NX2 (NX + 2)
+
 #define NY1 (NY + 1)
 #define NY2 (NY + 2)
+
 #define NZ1 (NZ + 1)
 #define NZ2 (NZ + 2)
 

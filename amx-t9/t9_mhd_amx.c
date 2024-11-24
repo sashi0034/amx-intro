@@ -35,6 +35,10 @@ void print_sample_layer(float f[restrict NB][NZ2][NY2][NX2]) {
 
 // -----------------------------------------------
 
+
+
+// -----------------------------------------------
+
 int main() {
     // Time variables
     clock_t zt0, zt1, zt2, zt3;
