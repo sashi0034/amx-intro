@@ -6,6 +6,7 @@
 #include <time.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <memory.h>
 
 #define NOUT0 64
 
@@ -23,14 +24,6 @@ void print_sample_layer(float f[restrict NB][NZ2][NY2][NX2]) {
         }
         printf("\n");
     }
-//    for (int y = 0; y < NY2; y++) {
-//        for (int x = 0; x < NX2; x++) {
-//            if (f[SAMPLE_LAYER_N][SAMPLE_LAYER_Z][y][x] != 0) {
-//                printf("%f ", f[SAMPLE_LAYER_N][SAMPLE_LAYER_Z][y][x]);
-//            }
-//        }
-//        printf("\n");
-//    }
 }
 
 // -----------------------------------------------
@@ -92,15 +85,7 @@ static void conv_test(float f[restrict NB][NZ2][NY2][NX2], FP32_16x8_12x24 *filt
     FP32_8x8_24x24 c;
     FP32_8x16_24x12 a;
 
-    for (int y1 = 0; y1 < 24; y1++) {
-        for (int x1 = 0; x1 < 24; x1++) {
-            for (int y0 = 0; y0 < 8; y0++) {
-                for (int x0 = 0; x0 < 8; x0++) {
-                    c.elem[y1][x1].rows[y0].cols[x0] = 0;
-                }
-            }
-        }
-    }
+    memset(&c, 0, sizeof(c));
 
     for (int y1 = 0; y1 < 24; y1++) {
         for (int x1 = 0; x1 < 12; x1++) {
@@ -111,16 +96,6 @@ static void conv_test(float f[restrict NB][NZ2][NY2][NX2], FP32_16x8_12x24 *filt
             }
         }
     }
-
-//    for (int y1 = 0; y1 < 12; y1++) {
-//        for (int x1 = 0; x1 < 24; x1++) {
-//            for (int y0 = 0; y0 < 16; y0++) {
-//                for (int x0 = 0; x0 < 8; x0++) {
-//                    b.elem[y1][x1].rows[y0].cols[x0] = f[SAMPLE_LAYER_N][SAMPLE_LAYER_Z][y1 * 16 + y0][x1 * 8 + x0];
-//                }
-//            }
-//        }
-//    }
 
     dp_192x192(&c, &a, filter);
 
