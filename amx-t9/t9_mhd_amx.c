@@ -1,5 +1,6 @@
 
 #include "t9_mhd.h"
+#include "t9_amx_8x16.h"
 
 #include <math.h>
 #include <time.h>
@@ -14,7 +15,6 @@
 #define SAMPLE_LAYER_Z (NZ2 / 2)
 
 void print_sample_layer(float f[restrict NB][NZ2][NY2][NX2]) {
-
     for (int y = 0; y < NY2; y++) {
         for (int x = 0; x < NX2; x++) {
             if (f[SAMPLE_LAYER_N][SAMPLE_LAYER_Z][y][x] != 0) {
@@ -35,6 +35,97 @@ void print_sample_layer(float f[restrict NB][NZ2][NY2][NX2]) {
 
 // -----------------------------------------------
 
+typedef struct FP32_8x8_24x24 {
+    union {
+        FP32_8x8 elem[192 / 8][192 / 8]; // 24x24
+    };
+} FP32_8x8_24x24;
+
+typedef struct FP32_8x16_24x12 {
+    union {
+        FP32_8x16 elem[192 / 8][192 / 16]; // 24x12
+    };
+} FP32_8x16_24x12;
+
+typedef struct FP32_16x8_12x24 {
+    union {
+        FP32_16x8 elem[192 / 16][192 / 8]; // 12x24
+    };
+} FP32_16x8_12x24;
+
+static void dp_192x192(FP32_8x8_24x24 *c, const FP32_8x16_24x12 *a, const FP32_16x8_12x24 *b) {
+    for (int i = 0; i < 192 / 8; i++) {
+        for (int j = 0; j < 192 / 8; j++) {
+            for (int k = 0; k < 192 / 16; k++) {
+                amx_dp_8x16_16x8(&c->elem[i][j], &a->elem[i][k], &b->elem[k][j]);
+            }
+        }
+    }
+}
+
+static void print_8x8_24x24(FP32_8x8_24x24 *c) {
+    for (int i = 0; i < 192 / 8; i++) {
+        for (int j = 0; j < 192 / 8; j++) {
+            for (int y = 0; y < 8; y++) {
+                for (int x = 0; x < 8; x++) {
+                    printf("%f ", c->elem[i][j].rows[y].cols[x]);
+                }
+                printf("\n");
+            }
+        }
+    }
+}
+
+void make_filter(FP32_16x8_12x24 *filter) {
+    for (int y1 = 0; y1 < 12; y1++) {
+        for (int x1 = 0; x1 < 24; x1++) {
+            for (int y0 = 0; y0 < 16; y0++) {
+                for (int x0 = 0; x0 < 8; x0++) {
+                    filter->elem[y1][x1].rows[y0].cols[x0] = (fp32_t) ((x0 + y0) % 2);
+                }
+            }
+        }
+    }
+}
+
+static void conv_test(float f[restrict NB][NZ2][NY2][NX2], FP32_16x8_12x24 *filter) {
+    FP32_8x8_24x24 c;
+    FP32_8x16_24x12 a;
+
+    for (int y1 = 0; y1 < 24; y1++) {
+        for (int x1 = 0; x1 < 24; x1++) {
+            for (int y0 = 0; y0 < 8; y0++) {
+                for (int x0 = 0; x0 < 8; x0++) {
+                    c.elem[y1][x1].rows[y0].cols[x0] = 0;
+                }
+            }
+        }
+    }
+
+    for (int y1 = 0; y1 < 24; y1++) {
+        for (int x1 = 0; x1 < 12; x1++) {
+            for (int y0 = 0; y0 < 8; y0++) {
+                for (int x0 = 0; x0 < 16; x0++) {
+                    a.elem[y1][x1].rows[y0].cols[x0] = f[SAMPLE_LAYER_N][SAMPLE_LAYER_Z][y1 * 8 + y0][x1 * 16 + x0];
+                }
+            }
+        }
+    }
+
+//    for (int y1 = 0; y1 < 12; y1++) {
+//        for (int x1 = 0; x1 < 24; x1++) {
+//            for (int y0 = 0; y0 < 16; y0++) {
+//                for (int x0 = 0; x0 < 8; x0++) {
+//                    b.elem[y1][x1].rows[y0].cols[x0] = f[SAMPLE_LAYER_N][SAMPLE_LAYER_Z][y1 * 16 + y0][x1 * 8 + x0];
+//                }
+//            }
+//        }
+//    }
+
+    dp_192x192(&c, &a, filter);
+
+    print_8x8_24x24(&c);
+}
 
 
 // -----------------------------------------------
@@ -66,6 +157,11 @@ int main() {
     // Record initial time
     zt1 = clock();
 
+    init_amx_8x16();
+
+    FP32_16x8_12x24 filter;
+    make_filter(&filter);
+
     // Main loop
     for (ii = 1; ii <= LAST; ii++) {
         nmlf++;
@@ -94,7 +190,9 @@ int main() {
 
         if (ii == 8) {
             printf("----------------------------------------------- %d\n", ii);
-            print_sample_layer(f);
+            // print_sample_layer(f);
+            conv_test(f, &filter);
+            break;
         }
 
         // -----------------------------------------------
@@ -123,5 +221,7 @@ int main() {
             gflops(zt);
         }
     }
+
+    release_amx();
     return 0;
 }
