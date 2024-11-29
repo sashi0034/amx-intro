@@ -56,17 +56,25 @@ static void dp_192x192(FP32_8x8_24x24 *c, const FP32_8x16_24x12 *a, const FP32_1
     }
 }
 
-static void print_8x8_24x24(FP32_8x8_24x24 *c) {
+static void fprint_8x8_24x24(FP32_8x8_24x24 *c) {
+    FILE *file = fopen("output/out_amx.txt", "w");
+    if (!file) {
+        perror("Failed to open file");
+        return;
+    }
+
     for (int i = 0; i < 192 / 8; i++) {
-        for (int j = 0; j < 192 / 8; j++) {
-            for (int y = 0; y < 8; y++) {
+        for (int y = 0; y < 8; y++) {
+            for (int j = 0; j < 192 / 8; j++) {
                 for (int x = 0; x < 8; x++) {
-                    printf("%f ", c->elem[i][j].rows[y].cols[x]);
+                    fprintf(file, "%f ", c->elem[i][j].rows[y].cols[x]);
                 }
-                printf("\n");
             }
+            fprintf(file, "\n");
         }
     }
+
+    fclose(file);
 }
 
 void make_filter(FP32_16x8_12x24 *filter) {
@@ -99,7 +107,7 @@ static void mock_task(float f[restrict NB][NZ2][NY2][NX2], FP32_16x8_12x24 *filt
 
     dp_192x192(&c, &a, filter);
 
-    print_8x8_24x24(&c);
+    fprint_8x8_24x24(&c);
 }
 
 

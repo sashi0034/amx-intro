@@ -72,7 +72,7 @@ void make_filter(FP32_192x192 *filter) {
     }
 }
 
-static void conv_test(float f[restrict NB][NZ2][NY2][NX2], FP32_192x192 *filter) {
+static void mock_task(float f[restrict NB][NZ2][NY2][NX2], FP32_192x192 *filter) {
     FP32_192x192 c;
     FP32_192x192 a;
 
@@ -151,7 +151,7 @@ int main() {
         if (ii == 8) {
             printf("----------------------------------------------- %d\n", ii);
             // print_sample_layer(f);
-            conv_test(f, &filter);
+            mock_task(f, &filter);
             break;
         }
 

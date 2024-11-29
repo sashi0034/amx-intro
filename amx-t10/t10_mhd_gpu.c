@@ -55,13 +55,21 @@ static void dp_192x192(FP32_192x192 *c, const FP32_192x192 *a, const FP32_192x19
     }
 }
 
-static void print_192x192(FP32_192x192 *c) {
+static void fprint_192x192(FP32_192x192 *c) {
+    FILE *file = fopen("output/out_gpu.txt", "w");
+    if (!file) {
+        perror("Failed to open file");
+        return;
+    }
+
     for (int i = 0; i < 192; i++) {
         for (int j = 0; j < 192; j++) {
-            printf("%f ", c->rows[i].cols[j]);
+            fprintf(file, "%f ", c->rows[i].cols[j]);
         }
-        printf("\n");
+        fprintf(file, "\n");
     }
+
+    fclose(file);
 }
 
 void make_filter(FP32_192x192 *filter) {
@@ -72,7 +80,7 @@ void make_filter(FP32_192x192 *filter) {
     }
 }
 
-static void conv_test(float f[restrict NB][NZ2][NY2][NX2], FP32_192x192 *filter) {
+static void mock_task(float f[restrict NB][NZ2][NY2][NX2], FP32_192x192 *filter) {
     FP32_192x192 c;
     FP32_192x192 a;
 
@@ -86,7 +94,7 @@ static void conv_test(float f[restrict NB][NZ2][NY2][NX2], FP32_192x192 *filter)
 
     dp_192x192(&c, &a, filter);
 
-    print_192x192(&c);
+    fprint_192x192(&c);
 }
 
 
@@ -148,10 +156,10 @@ int main() {
 
         // -----------------------------------------------
 
-        if (ii == 8) {
+        if (ii == 2) {
             printf("----------------------------------------------- %d\n", ii);
             // print_sample_layer(f);
-            conv_test(f, &filter);
+            mock_task(f, &filter);
             break;
         }
 
