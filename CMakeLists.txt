@@ -20,3 +20,5 @@ add_subdirectory(amx-t7)
 add_subdirectory(amx-t8)
 
 add_subdirectory(amx-t9)
+
+add_subdirectory(amx-t10)

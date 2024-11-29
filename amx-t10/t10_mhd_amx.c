@@ -1,6 +1,6 @@
 
-#include "t9_mhd.h"
-#include "t9_amx_8x16.h"
+#include "t10_mhd.h"
+#include "t10_amx_8x16.h"
 
 #include <math.h>
 #include <time.h>
@@ -81,7 +81,7 @@ void make_filter(FP32_16x8_12x24 *filter) {
     }
 }
 
-static void conv_test(float f[restrict NB][NZ2][NY2][NX2], FP32_16x8_12x24 *filter) {
+static void mock_task(float f[restrict NB][NZ2][NY2][NX2], FP32_16x8_12x24 *filter) {
     FP32_8x8_24x24 c;
     FP32_8x16_24x12 a;
 
@@ -163,10 +163,10 @@ int main() {
 
         // -----------------------------------------------
 
-        if (ii == 8) {
+        if (ii == 2) {
             printf("----------------------------------------------- %d\n", ii);
             // print_sample_layer(f);
-            mock_dl(f, &filter);
+            mock_task(f, &filter);
             break;
         }
 
