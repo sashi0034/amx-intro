@@ -22,3 +22,5 @@ add_subdirectory(amx-t8)
 add_subdirectory(amx-t9)
 
 add_subdirectory(amx-t10)
+
+add_subdirectory(conv1)
