@@ -16,7 +16,16 @@
                 float cols[(c)]; \
             } rows[(r)]; \
         }; \
-    } name;
+    } name; \
+    \
+    void print_##name(const name* mat) { \
+        for (int i = 0; i < (r); ++i) { \
+            for (int j = 0; j < (c); ++j) { \
+                printf("%f ", (mat->rows[i].cols[j])); \
+            } \
+            printf("\n"); \
+        } \
+    }
 
 #define MATRIX_ROWS 7
 #define MATRIX_COLS 7
@@ -27,15 +36,6 @@ DEFINE_MATRIX(Matrix, MATRIX_ROWS, MATRIX_COLS)
 #define FILTER_OFFSET ((FILTER_SIZE - 1) / 2)
 
 DEFINE_MATRIX(Filter3x3, FILTER_SIZE, FILTER_SIZE)
-
-void print_matrix(const Matrix *m) {
-    for (int r = 0; r < MATRIX_ROWS; ++r) {
-        for (int c = 0; c < MATRIX_COLS; ++c) {
-            printf("%f ", m->rows[r].cols[c]);
-        }
-        printf("\n");
-    }
-}
 
 // -----------------------------------------------
 
@@ -91,7 +91,17 @@ typedef struct { // __tile_config
                 bf16_t cols[(c)]; \
             } rows[(r)]; \
         }; \
-    } name;
+    } name; \
+    \
+    void print_##name(const name* mat) { \
+        for (int i = 0; i < (r); ++i) { \
+            for (int j = 0; j < (c); ++j) { \
+                printf("%f ", bf16_to_fp32(mat->rows[i].cols[j])); \
+            } \
+            printf("\n"); \
+        } \
+    }
+
 
 // まず、入力サイズ 7x7、フィルタサイズ 3x3 の畳み込みを考える
 
@@ -177,8 +187,13 @@ void load_patch_input(PatchInputMat *patch_input, const Matrix *input, int patch
     _tile_loadd(PATCH_INPUT_REG_2, patch_input->bf16s, PATCH_INPUT_COLS * sizeof(bf16_t));
 }
 
-void store_path_output(Matrix *output, int patchRaw) {
-    _tile_stored(PATCH_OUTPUT_REG_1, output->fp32s + patchRaw * MATRIX_COLS, PATCH_OUTPUT_COLS * sizeof(fp32_t));
+void store_patch_output(Matrix *output, int patchRaw) {
+    _tile_stored(PATCH_OUTPUT_REG_1,
+                 output->fp32s + (patchRaw) * MATRIX_COLS,
+                 PATCH_OUTPUT_COLS * sizeof(fp32_t)
+    );
+
+    __asm__ __volatile__ ("" : "+m" (output->fp32s));
 }
 
 void init_patch_output(PatchOutputMat *patch_output) {
@@ -199,11 +214,15 @@ void convolution_amx(Matrix *output, const Matrix *input, const Filter3x3 *filte
 
         load_patch_input(&patch_input, input, patchRaw);
 
+//        printf("----------------------------------------------- Input\n");
+//        print_PatchInputMat(&patch_input);
+//        printf("----------------------------------------------- Filter\n");
+//        print_PatchFilterMat(&patch_filter);
+//        printf("\n");
+
         _tile_dpbf16ps(PATCH_OUTPUT_REG_1, PATCH_INPUT_REG_2, PATCH_FILTER_REG_3);
 
-        store_path_output(output, patchRaw);
-
-        __asm__ __volatile__ ("" : "+m" (output->fp32s));
+        store_patch_output(output, patchRaw);
     }
 }
 
@@ -248,6 +267,6 @@ int main() {
 
     // -----------------------------------------------
 
-    print_matrix(&output);
+    print_Matrix(&output);
 }
 
