@@ -27,8 +27,8 @@
         } \
     }
 
-#define MATRIX_ROWS 7
-#define MATRIX_COLS 7
+#define MATRIX_ROWS 32
+#define MATRIX_COLS 32
 
 DEFINE_MATRIX(Matrix, MATRIX_ROWS, MATRIX_COLS)
 
@@ -49,7 +49,8 @@ void convolution_naive(Matrix *output, const Matrix *input, const Filter3x3 *fil
                 }
             }
 
-            output->rows[FILTER_OFFSET + r].cols[FILTER_OFFSET + c] = sum;
+            output->rows[r].cols[c] = sum;
+            // output->rows[FILTER_OFFSET + r].cols[FILTER_OFFSET + c] = sum;
         }
     }
 }
@@ -105,7 +106,8 @@ typedef struct { // __tile_config
 
 // まず、入力サイズ 7x7、フィルタサイズ 3x3 の畳み込みを考える
 
-#define PATCH_INPUT_ROWS (MATRIX_ROWS - FILTER_OFFSET * 2) // 5
+#define PATCH_STRIDE_16 16
+#define PATCH_INPUT_ROWS PATCH_STRIDE_16
 #define PATCH_INPUT_COLS 10 // = 9 + 1
 
 #define PATCH_FILTER_ROWS (PATCH_INPUT_COLS / 2)
@@ -170,16 +172,24 @@ void load_patch_filter(PatchFilterMat *patch_filter, const Filter3x3 *filter) {
     _tile_loadd(PATCH_FILTER_REG_3, patch_filter->bf16s, PATCH_FILTER_COLS * sizeof(bf16_t));
 }
 
-void load_patch_input(PatchInputMat *patch_input, const Matrix *input, int patchRaw) {
+void load_patch_input(PatchInputMat *patch_input, const Matrix *input, int patchRaw, int col16) {
     for (int pr = 0; pr < PATCH_INPUT_ROWS; ++pr) {
         for (int pc = 0; pc < PATCH_INPUT_COLS; ++pc) {
             if (pc >= FILTER_SIZE * FILTER_SIZE) {
+                // フィルタが存在しない部分
+                patch_input->rows[pr].cols[pc] = 0;
+                continue;
+            }
+
+            if (col16 * PATCH_STRIDE_16 + pr >= MATRIX_COLS - FILTER_OFFSET * 2) {
+                // フィルタを適応しない部分
                 patch_input->rows[pr].cols[pc] = 0;
                 continue;
             }
 
             const int offsetR = patchRaw + (pc / FILTER_SIZE);
-            const int offsetC = pr + (pc % FILTER_SIZE);
+            const int offsetC = col16 * PATCH_STRIDE_16 + pr + (pc % FILTER_SIZE);
+
             patch_input->rows[pr].cols[pc] = fp32_to_bf16(input->rows[offsetR].cols[offsetC]);
         }
     }
@@ -187,17 +197,25 @@ void load_patch_input(PatchInputMat *patch_input, const Matrix *input, int patch
     _tile_loadd(PATCH_INPUT_REG_2, patch_input->bf16s, PATCH_INPUT_COLS * sizeof(bf16_t));
 }
 
-void store_patch_output(Matrix *output, int patchRaw) {
+static void store_patch_output(Matrix *output, int patchRaw, int col16) {
     _tile_stored(PATCH_OUTPUT_REG_1,
-                 output->fp32s + (patchRaw) * MATRIX_COLS,
+                 output->fp32s + col16 * PATCH_STRIDE_16 + (patchRaw) * MATRIX_COLS,
                  PATCH_OUTPUT_COLS * sizeof(fp32_t)
     );
 
     __asm__ __volatile__ ("" : "+m" (output->fp32s));
 }
 
-void init_patch_output(PatchOutputMat *patch_output) {
+static void init_patch_output(PatchOutputMat *patch_output) {
     memset(patch_output, 0, sizeof(PatchOutputMat));
+}
+
+static void print_patch_input() {
+//        printf("----------------------------------------------- Input\n");
+//        print_PatchInputMat(&patch_input);
+//        printf("----------------------------------------------- Filter\n");
+//        print_PatchFilterMat(&patch_filter);
+//        printf("\n");
 }
 
 void convolution_amx(Matrix *output, const Matrix *input, const Filter3x3 *filter) {
@@ -209,20 +227,16 @@ void convolution_amx(Matrix *output, const Matrix *input, const Filter3x3 *filte
 
     init_patch_output(&patch_output);
 
-    for (int patchRaw = 0; patchRaw < PATCH_OUTPUT_ROWS; ++patchRaw) {
-        _tile_loadd(PATCH_OUTPUT_REG_1, output->fp32s + patchRaw * MATRIX_COLS, PATCH_OUTPUT_COLS * sizeof(fp32_t));
+    for (int patchRaw = 0; patchRaw < MATRIX_ROWS - FILTER_OFFSET * 2; ++patchRaw) {
+        for (int col16 = 0; col16 < MATRIX_COLS / PATCH_STRIDE_16; ++col16) {
+            _tile_loadd(PATCH_OUTPUT_REG_1, patch_output.fp32s, PATCH_OUTPUT_COLS * sizeof(fp32_t));
 
-        load_patch_input(&patch_input, input, patchRaw);
+            load_patch_input(&patch_input, input, patchRaw, col16);
 
-//        printf("----------------------------------------------- Input\n");
-//        print_PatchInputMat(&patch_input);
-//        printf("----------------------------------------------- Filter\n");
-//        print_PatchFilterMat(&patch_filter);
-//        printf("\n");
+            _tile_dpbf16ps(PATCH_OUTPUT_REG_1, PATCH_INPUT_REG_2, PATCH_FILTER_REG_3);
 
-        _tile_dpbf16ps(PATCH_OUTPUT_REG_1, PATCH_INPUT_REG_2, PATCH_FILTER_REG_3);
-
-        store_patch_output(output, patchRaw);
+            store_patch_output(output, patchRaw, col16);
+        }
     }
 }
 

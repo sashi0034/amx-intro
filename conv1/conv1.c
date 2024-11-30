@@ -210,7 +210,7 @@ void convolution_amx(Matrix *output, const Matrix *input, const Filter3x3 *filte
     init_patch_output(&patch_output);
 
     for (int patchRaw = 0; patchRaw < PATCH_OUTPUT_ROWS; ++patchRaw) {
-        _tile_loadd(PATCH_OUTPUT_REG_1, output->fp32s + patchRaw * MATRIX_COLS, PATCH_OUTPUT_COLS * sizeof(fp32_t));
+        _tile_loadd(PATCH_OUTPUT_REG_1, patch_output.fp32s, PATCH_OUTPUT_COLS * sizeof(fp32_t));
 
         load_patch_input(&patch_input, input, patchRaw);
 
