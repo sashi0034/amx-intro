@@ -129,16 +129,22 @@ static void init_tile_config() {
     tile.start_row = 0;
 
     // Result Register
-    tile.colsb[PATCH_OUTPUT_REG_1] = PATCH_INPUT_ROWS * sizeof(fp32_t);
-    tile.rows[PATCH_OUTPUT_REG_1] = 1;
+    tile.colsb[PATCH_OUTPUT_REG_1] = PATCH_OUTPUT_COLS * sizeof(fp32_t);
+    tile.rows[PATCH_OUTPUT_REG_1] = PATCH_OUTPUT_ROWS;
 
     // Source Register A
     tile.colsb[PATCH_INPUT_REG_2] = PATCH_INPUT_COLS * sizeof(bf16_t);
     tile.rows[PATCH_INPUT_REG_2] = PATCH_INPUT_ROWS;
 
     // Source Register B
-    tile.colsb[PATCH_FILTER_REG_3] = 1 * sizeof(bf16_t);
+    tile.colsb[PATCH_FILTER_REG_3] = PATCH_FILTER_COLS * sizeof(bf16_t);
     tile.rows[PATCH_FILTER_REG_3] = PATCH_FILTER_ROWS;
+
+//    printf("1: (%d, %d), 2: (%d, %d), 3: (%d, %d)\n",
+//           tile.colsb[PATCH_OUTPUT_REG_1], tile.rows[PATCH_OUTPUT_REG_1],
+//           tile.colsb[PATCH_INPUT_REG_2], tile.rows[PATCH_INPUT_REG_2],
+//           tile.colsb[PATCH_FILTER_REG_3], tile.rows[PATCH_FILTER_REG_3]);
+//    fflush(stdout);
 
     _tile_loadconfig(&tile);
 }
@@ -171,7 +177,7 @@ void load_patch_input(PatchInputMat *patch_input, const Matrix *input, int patch
     _tile_loadd(PATCH_INPUT_REG_2, patch_input->bf16s, PATCH_INPUT_COLS * sizeof(bf16_t));
 }
 
-void store_path_output(const PatchOutputMat *patch_output, Matrix *output, int patchRaw) {
+void store_path_output(Matrix *output, int patchRaw) {
     _tile_stored(PATCH_OUTPUT_REG_1, output->fp32s + patchRaw * MATRIX_COLS, PATCH_OUTPUT_COLS * sizeof(fp32_t));
 }
 
@@ -195,7 +201,7 @@ void convolution_amx(Matrix *output, const Matrix *input, const Filter3x3 *filte
 
         _tile_dpbf16ps(PATCH_OUTPUT_REG_1, PATCH_INPUT_REG_2, PATCH_FILTER_REG_3);
 
-        store_path_output(&patch_output, output, patchRaw);
+        store_path_output(output, patchRaw);
 
         __asm__ __volatile__ ("" : "+m" (output->fp32s));
     }
