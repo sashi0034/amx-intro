@@ -265,17 +265,18 @@ void make_filter(Filter3x3 *filter) {
 }
 
 static void mock_task(float f[restrict NB][NZ2][NY2][NX2], Filter3x3 *filter) {
-    // Matrix *input = (Matrix *) (f[SAMPLE_LAYER_N][SAMPLE_LAYER_Z]);
-    Matrix input;
-    for (int r = 0; r < MATRIX_ROWS; ++r) {
-        for (int c = 0; c < MATRIX_COLS; ++c) {
-            input.rows[r].cols[c] = f[SAMPLE_LAYER_N][SAMPLE_LAYER_Z][r][c];
-        }
-    }
+    Matrix *input = (Matrix *) (f[SAMPLE_LAYER_N][SAMPLE_LAYER_Z]);
+//    Matrix input;
+//    for (int r = 0; r < MATRIX_ROWS; ++r) {
+//        for (int c = 0; c < MATRIX_COLS; ++c) {
+//            input.rows[r].cols[c] = f[SAMPLE_LAYER_N][SAMPLE_LAYER_Z][r][c];
+//        }
+//    }
 
     Matrix output;
+    memset(&output, 0, sizeof(output));
 
-    convolution_amx(&output, &input, filter);
+    convolution_amx(&output, input, filter);
 
     fprint_Matrix_to_file("output/out_amx.txt", &output);
 }
