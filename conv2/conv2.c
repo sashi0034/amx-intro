@@ -103,9 +103,6 @@ typedef struct { // __tile_config
         } \
     }
 
-
-// まず、入力サイズ 7x7、フィルタサイズ 3x3 の畳み込みを考える
-
 #define PATCH_STRIDE_16 16
 #define PATCH_INPUT_ROWS PATCH_STRIDE_16
 #define PATCH_INPUT_COLS 10 // = 9 + 1

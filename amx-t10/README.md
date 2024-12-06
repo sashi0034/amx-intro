@@ -2,11 +2,11 @@
 # クラスタ実行
 AMX
 ```sh
-icc -g -O2 t10_mhd_amx.c t10_mhd.c t10_amx_8x16.c -o build/t10_mhd_amx && tssrun -p gr10034a --rsc m=50G build/t10_mhd_amx
+icc -g -O2 t10_mhd_amx.c t10_mhd.c -o build/t10_mhd_amx && tssrun -p gr10034a --rsc m=50G build/t10_mhd_amx
 ```
 
 ```
-icc -g -O2 t10_mhd_amx.c t10_mhd.c t10_amx_8x16.c -o build/t10_mhd_amx && \
+icc -g -O2 t10_mhd_amx.c t10_mhd.c -o build/t10_mhd_amx && \
 module load intel-vtune && \
 tssrun -p gr10034a --rsc m=50G vtune -collect hotspots -r=./result/t10_mhd_amx build/t10_mhd_amx
 ```
