@@ -30,71 +30,92 @@ void print_sample_layer(float f[restrict NB][NZ2][NY2][NX2]) {
 
 // -----------------------------------------------
 
-typedef struct FP32_V192 {
-    fp32_t cols[192];
-} FP32_V192;
+#define DEFINE_MATRIX(name, r, c) \
+    typedef struct name { \
+        union { \
+            float fp32s[(r) * (c)]; \
+            struct { \
+                float cols[(c)]; \
+            } rows[(r)];          \
+            float mat[r][c]; \
+        }; \
+    } name; \
+    \
+    void print_##name(const name* mat) { \
+        for (int i = 0; i < (r); ++i) { \
+            for (int j = 0; j < (c); ++j) { \
+                printf("%f ", (mat->rows[i].cols[j])); \
+            } \
+            printf("\n"); \
+        } \
+    } \
+    \
+    void fprint_##name(FILE* file, const name* mat) { \
+        for (int i = 0; i < (r); ++i) { \
+            for (int j = 0; j < (c); ++j) { \
+                fprintf(file, "%f ", (mat->rows[i].cols[j])); \
+            } \
+            fprintf(file, "\n"); \
+        } \
+    } \
+    \
+    void fprint_##name##_to_file(const char* filename, const name* mat) { \
+        FILE* file = fopen(filename, "w"); \
+        if (!file) { \
+            perror("Failed to open file"); \
+            return; \
+        } \
+        fprint_##name(file, mat); \
+        fclose(file); \
+    }
 
-typedef struct FP32_192x192 {
-    union {
-        FP32_V192 rows[192];
-    };
-} FP32_192x192;
+#define SIM_MAT_ROWS 192
+#define SIM_MAT_COLS 192
 
-static void dp_192x192(FP32_192x192 *c, const FP32_192x192 *a, const FP32_192x192 *b) {
-#pragma acc data copyin(a[0:1], b[0:1]) copyout(c[0:1])
+DEFINE_MATRIX(SimMat, SIM_MAT_ROWS, SIM_MAT_COLS)
+
+#define FILTER_SIZE 3
+#define FILTER_PADDING ((FILTER_SIZE - 1) / 2)
+
+DEFINE_MATRIX(Filter3x3, FILTER_SIZE, FILTER_SIZE)
+
+static void convolution_gpu(
+        float output[SIM_MAT_ROWS][SIM_MAT_COLS],
+        const float input[SIM_MAT_ROWS][SIM_MAT_COLS],
+        const float filter[FILTER_SIZE][FILTER_SIZE]) {
+#pragma acc data copyin(input, filter) copyout(output)
     {
 #pragma acc parallel loop collapse(2)
-        for (int i = 0; i < 192; i++) {
-            for (int j = 0; j < 192; j++) {
-                c->rows[i].cols[j] = 0.0f;
-                for (int k = 0; k < 192; k++) {
-                    c->rows[i].cols[j] += a->rows[i].cols[k] * b->rows[k].cols[j];
+        for (int r = 0; r < SIM_MAT_ROWS - FILTER_PADDING * 2; r++) {
+            for (int c = 0; c < SIM_MAT_COLS - FILTER_PADDING * 2; c++) {
+                float sum = 0.0f;
+                for (int fi = 0; fi < FILTER_SIZE; fi++) {
+                    for (int fj = 0; fj < FILTER_SIZE; fj++) {
+                        sum += input[r + fi][c + fj] * filter[fi][fj];
+                    }
                 }
+
+                output[r][c] = sum;
             }
         }
     }
 }
 
-static void fprint_192x192(FP32_192x192 *c) {
-    FILE *file = fopen("output/out_gpu.txt", "w");
-    if (!file) {
-        perror("Failed to open file");
-        return;
-    }
-
-    for (int i = 0; i < 192; i++) {
-        for (int j = 0; j < 192; j++) {
-            fprintf(file, "%f ", c->rows[i].cols[j]);
-        }
-        fprintf(file, "\n");
-    }
-
-    fclose(file);
-}
-
-void make_filter(FP32_192x192 *filter) {
-    for (int i = 0; i < 192; i++) {
-        for (int j = 0; j < 192; j++) {
-            filter->rows[i].cols[j] = (fp32_t) ((i + j) % 2);
+void make_filter(Filter3x3 *filter) {
+    for (int r = 0; r < FILTER_SIZE; ++r) {
+        for (int c = 0; c < FILTER_SIZE; ++c) {
+            filter->rows[r].cols[c] = (float) ((r + c) % 2);
         }
     }
 }
 
-static void mock_task(float f[restrict NB][NZ2][NY2][NX2], FP32_192x192 *filter) {
-    FP32_192x192 c;
-    FP32_192x192 a;
+static void mock_task(float f[restrict NB][NZ2][NY2][NX2], Filter3x3 *filter) {
+    SimMat output;
+    memset(&output, 0, sizeof(output));
 
-    memset(&c, 0, sizeof(c));
+    convolution_gpu(output.mat, f[SAMPLE_LAYER_N][SAMPLE_LAYER_N], filter->mat);
 
-    for (int i = 0; i < 192; i++) {
-        for (int j = 0; j < 192; j++) {
-            a.rows[i].cols[j] = (fp32_t) f[SAMPLE_LAYER_N][SAMPLE_LAYER_Z][i][j];
-        }
-    }
-
-    dp_192x192(&c, &a, filter);
-
-    fprint_192x192(&c);
+    fprint_SimMat_to_file("output/out_gpu.txt", &output);
 }
 
 
@@ -127,7 +148,7 @@ int main() {
     // Record initial time
     zt1 = clock();
 
-    FP32_192x192 filter;
+    Filter3x3 filter;
     make_filter(&filter);
 
     // Main loop

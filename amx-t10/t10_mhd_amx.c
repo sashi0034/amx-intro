@@ -51,13 +51,13 @@
         fclose(file); \
     }
 
-#define MATRIX_ROWS 192
-#define MATRIX_COLS 192
+#define SIM_MAT_ROWS 192
+#define SIM_MAT_COLS 192
 
-DEFINE_MATRIX(Matrix, MATRIX_ROWS, MATRIX_COLS)
+DEFINE_MATRIX(SimMat, SIM_MAT_ROWS, SIM_MAT_COLS)
 
 #define FILTER_SIZE 3
-#define FILTER_OFFSET ((FILTER_SIZE - 1) / 2)
+#define FILTER_PADDING ((FILTER_SIZE - 1) / 2)
 
 DEFINE_MATRIX(Filter3x3, FILTER_SIZE, FILTER_SIZE)
 
@@ -176,7 +176,7 @@ void load_patch_filter(PatchFilterMat *patch_filter, const Filter3x3 *filter) {
     _tile_loadd(PATCH_FILTER_REG_3, patch_filter->bf16s, PATCH_FILTER_COLS * sizeof(bf16_t));
 }
 
-void load_patch_input(PatchInputMat *patch_input, const Matrix *input, int patchRaw, int col16) {
+void load_patch_input(PatchInputMat *patch_input, const SimMat *input, int patchRaw, int col16) {
     for (int pr = 0; pr < PATCH_INPUT_ROWS; ++pr) {
         for (int pc = 0; pc < PATCH_INPUT_COLS; ++pc) {
             if (pc >= FILTER_SIZE * FILTER_SIZE) {
@@ -185,7 +185,7 @@ void load_patch_input(PatchInputMat *patch_input, const Matrix *input, int patch
                 continue;
             }
 
-            if (col16 * PATCH_STRIDE_16 + pr >= MATRIX_COLS - FILTER_OFFSET * 2) {
+            if (col16 * PATCH_STRIDE_16 + pr >= SIM_MAT_COLS - FILTER_PADDING * 2) {
                 // フィルタを適応しない部分
                 patch_input->rows[pr].cols[pc] = 0;
                 continue;
@@ -201,9 +201,9 @@ void load_patch_input(PatchInputMat *patch_input, const Matrix *input, int patch
     _tile_loadd(PATCH_INPUT_REG_2, patch_input->bf16s, PATCH_INPUT_COLS * sizeof(bf16_t));
 }
 
-static void store_patch_output(Matrix *output, int patchRaw, int col16) {
+static void store_patch_output(SimMat *output, int patchRaw, int col16) {
     _tile_stored(PATCH_OUTPUT_REG_1,
-                 output->fp32s + col16 * PATCH_STRIDE_16 + (patchRaw) * MATRIX_COLS,
+                 output->fp32s + col16 * PATCH_STRIDE_16 + (patchRaw) * SIM_MAT_COLS,
                  PATCH_OUTPUT_COLS * sizeof(fp32_t)
     );
 
@@ -214,7 +214,7 @@ static void init_patch_output(PatchOutputMat *patch_output) {
     memset(patch_output, 0, sizeof(PatchOutputMat));
 }
 
-void convolution_amx(Matrix *output, const Matrix *input, const Filter3x3 *filter) {
+void convolution_amx(SimMat *output, const SimMat *input, const Filter3x3 *filter) {
     PatchInputMat patch_input;
     PatchFilterMat patch_filter;
     PatchOutputMat patch_output;
@@ -223,8 +223,8 @@ void convolution_amx(Matrix *output, const Matrix *input, const Filter3x3 *filte
 
     init_patch_output(&patch_output);
 
-    for (int patchRaw = 0; patchRaw < MATRIX_ROWS - FILTER_OFFSET * 2; ++patchRaw) {
-        for (int col16 = 0; col16 < MATRIX_COLS / PATCH_STRIDE_16; ++col16) {
+    for (int patchRaw = 0; patchRaw < SIM_MAT_ROWS - FILTER_PADDING * 2; ++patchRaw) {
+        for (int col16 = 0; col16 < SIM_MAT_COLS / PATCH_STRIDE_16; ++col16) {
             _tile_loadd(PATCH_OUTPUT_REG_1, patch_output.fp32s, PATCH_OUTPUT_COLS * sizeof(fp32_t));
 
             load_patch_input(&patch_input, input, patchRaw, col16);
@@ -265,20 +265,20 @@ void make_filter(Filter3x3 *filter) {
 }
 
 static void mock_task(float f[restrict NB][NZ2][NY2][NX2], Filter3x3 *filter) {
-    Matrix *input = (Matrix *) (f[SAMPLE_LAYER_N][SAMPLE_LAYER_Z]);
-//    Matrix input;
-//    for (int r = 0; r < MATRIX_ROWS; ++r) {
-//        for (int c = 0; c < MATRIX_COLS; ++c) {
+    SimMat *input = (SimMat *) (f[SAMPLE_LAYER_N][SAMPLE_LAYER_Z]);
+//    SimMat input;
+//    for (int r = 0; r < SIM_MAT_ROWS; ++r) {
+//        for (int c = 0; c < SIM_MAT_COLS; ++c) {
 //            input.rows[r].cols[c] = f[SAMPLE_LAYER_N][SAMPLE_LAYER_Z][r][c];
 //        }
 //    }
 
-    Matrix output;
+    SimMat output;
     memset(&output, 0, sizeof(output));
 
     convolution_amx(&output, input, filter);
 
-    fprint_Matrix_to_file("output/out_amx.txt", &output);
+    fprint_SimMat_to_file("output/out_amx.txt", &output);
 }
 
 
