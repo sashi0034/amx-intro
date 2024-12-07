@@ -11,6 +11,11 @@ module load intel-vtune && \
 tssrun -p gr10034a --rsc m=50G vtune -collect hotspots -r=./result/t10_mhd_amx build/t10_mhd_amx
 ```
 
+Naive
+```sh
+icc -g -O2 t10_mhd_naive.c t10_mhd.c -o build/t10_mhd_naive && tssrun -p gr10034a --rsc m=50G build/t10_mhd_naive
+```
+
 GPU
 ```sh
 # module switch PrgEnvIntel PrgEnvNvidia
