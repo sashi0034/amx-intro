@@ -1,6 +1,6 @@
 
-#include "t10_mhd.h"
-#include "../amx-t11/t11_sim.h"
+#include "t11_mhd.h"
+#include "t11_sim.h"
 
 #include <time.h>
 #include <stdio.h>
@@ -12,58 +12,6 @@
 #include <stdbool.h>
 #include <immintrin.h>
 
-#define NOUT0 64
-
-#define DEFINE_MATRIX(name, r, c) \
-    typedef struct name { \
-        union { \
-            float fp32s[(r) * (c)]; \
-            struct { \
-                float cols[(c)]; \
-            } rows[(r)]; \
-            float mat[r][c]; \
-        }; \
-    } name; \
-    \
-    void print_##name(const name* mat) { \
-        for (int i = 0; i < (r); ++i) { \
-            for (int j = 0; j < (c); ++j) { \
-                printf("%f ", (mat->rows[i].cols[j])); \
-            } \
-            printf("\n"); \
-        } \
-    } \
-    \
-    void fprint_##name(FILE* file, const name* mat) { \
-        for (int i = 0; i < (r); ++i) { \
-            for (int j = 0; j < (c); ++j) { \
-                fprintf(file, "%f ", (mat->rows[i].cols[j])); \
-            } \
-            fprintf(file, "\n"); \
-        } \
-    } \
-    \
-    void fprint_##name##_to_file(const char* filename, const name* mat) { \
-        FILE* file = fopen(filename, "w"); \
-        if (!file) { \
-            perror("Failed to open file"); \
-            return; \
-        } \
-        fprint_##name(file, mat); \
-        fclose(file); \
-    }
-
-#define SIM_MAT_ROWS 192
-#define SIM_MAT_COLS 192
-
-DEFINE_MATRIX(SimMat, SIM_MAT_ROWS, SIM_MAT_COLS)
-
-#define FILTER_SIZE 3
-#define FILTER_PADDING ((FILTER_SIZE - 1) / 2)
-
-DEFINE_MATRIX(Filter3x3, FILTER_SIZE, FILTER_SIZE)
-
-// -----------------------------------------------
 typedef uint16_t bf16_t;
 
 typedef float fp32_t;
@@ -125,7 +73,9 @@ DEFINE_BF16MAT(PatchInputMat, PATCH_INPUT_ROWS, PATCH_INPUT_COLS)
 
 DEFINE_BF16MAT(PatchFilterMat, PATCH_FILTER_ROWS, PATCH_FILTER_COLS)
 
-DEFINE_MATRIX(PatchOutputMat, PATCH_OUTPUT_ROWS, PATCH_OUTPUT_COLS)
+DEFINE_MATRIX(PatchOutputMat,
+
+              PATCH_OUTPUT_ROWS, PATCH_OUTPUT_COLS)
 
 static bool prepare_system_for_amx() {
     if (syscall(SYS_arch_prctl, ARCH_REQ_XCOMP_PERM, XFEATURE_XTILEDATA)) {
@@ -236,32 +186,6 @@ void convolution_amx(SimMat *output, const SimMat *input, const Filter3x3 *filte
 
 // -----------------------------------------------
 
-#define SAMPLE_LAYER_N 6
-#define SAMPLE_LAYER_Z (NZ2 / 2)
-
-void print_sample_layer(float f[restrict NB][NZ2][NY2][NX2]) {
-    for (int y = 0; y < NY2; y++) {
-        for (int x = 0; x < NX2; x++) {
-            if (f[SAMPLE_LAYER_N][SAMPLE_LAYER_Z][y][x] != 0) {
-                printf("%f ", 1000 * f[SAMPLE_LAYER_N][SAMPLE_LAYER_Z][y][x]);
-            }
-        }
-        printf("\n");
-    }
-}
-
-// -----------------------------------------------
-
-
-
-void make_filter(Filter3x3 *filter) {
-    for (int r = 0; r < FILTER_SIZE; ++r) {
-        for (int c = 0; c < FILTER_SIZE; ++c) {
-            filter->rows[r].cols[c] = (float) ((r + c) % 2);
-        }
-    }
-}
-
 static void mock_task(float f[restrict NB][NZ2][NY2][NX2], Filter3x3 *filter) {
     SimMat output;
     memset(&output, 0, sizeof(output));
@@ -273,35 +197,11 @@ static void mock_task(float f[restrict NB][NZ2][NY2][NX2], Filter3x3 *filter) {
     fprint_SimMat_to_file("output/out_amx.txt", &output);
 }
 
-
 // -----------------------------------------------
 
 int main() {
-    // Time variables
-    clock_t zt0, zt1, zt2, zt3;
-    double zt, ztt;
-
-    // Simulation arrays
-    float (*restrict f)[NZ2][NY2][NX2] = (float (*)[NZ2][NY2][NX2]) malloc(NB * NZ2 * NY2 * NX2 * sizeof(float));
-    float (*restrict u)[NZ2][NY2][NX2] = (float (*)[NZ2][NY2][NX2]) malloc(NB * NZ2 * NY2 * NX2 * sizeof(float));
-    float (*restrict pp)[NZ2][NY2][NX2] = (float (*)[NZ2][NY2][NX2]) malloc(NBBB * NZ2 * NY2 * NX2 * sizeof(float));
-
-    int nmlf = 0, nupb = 0, nout = 0, ii;
-    int ntap = 10;
-
-    float vmax = 0.0;
-
-    // Simulation information
-    simuinfo();
-
-    // Record start time
-    zt0 = clock();
-
-    // Initial conditions
-    equil_out(f, pp);
-
-    // Record initial time
-    zt1 = clock();
+    SimState simState;
+    init_sim_state(&simState);
 
     prepare_system_for_amx();
 
@@ -311,66 +211,17 @@ int main() {
     make_filter(&filter);
 
     // Main loop
-    for (ii = 1; ii <= LAST; ii++) {
-        nmlf++;
-        nupb++;
-        nout++;
-
-        // Outer boundary for f
-        bdry_z_m(f, u);
-
-        // Main calculation
-        mlf(f, u, pp, ii, nmlf, vmax);
-
-        if (vmax > 1.0)
-            nout = NOUT0;
-
-        if (nmlf == NMLF0)
-            nmlf = 0;
-
-        // Upward boundary condition for f
-        if (nupb == NUPB0) {
-            nupb = 0;
-            bdry_up(f, u);
-        }
-
-        // -----------------------------------------------
+    for (int ii = 1; ii <= LAST; ii++) {
+        tick_sim_state(&simState, ii);
 
         if (ii == 2) {
             printf("----------------------------------------------- %d\n", ii);
             // print_sample_layer(f);
-            mock_task(f, &filter);
+            mock_task(simState.f, &filter);
             break;
-        }
-
-        // -----------------------------------------------
-
-        // Finalization part (write data, etc.)
-        if (nout == NOUT0) {
-            nout = 0;
-
-            // Record end time
-            zt3 = clock();
-
-            // Output information
-            ntap++;
-
-            printf("    ii, LAST, ntap,   vmax,    THX\n");
-            printf("%6d%6d%6d%8.4f%8.4f\n", ii, LAST, ntap, vmax, THX);
-            printf(" \n");
-
-            zt = (double) (zt3 - zt1) / CLOCKS_PER_SEC;
-            ztt = (double) (zt1 - zt0) / CLOCKS_PER_SEC;
-
-            printf("    ii,      init,        zt\n");
-            printf("%6d%11.4f%11.4f\n", ii, ztt, zt);
-            printf(" \n");
-
-            gflops(zt);
         }
     }
 
     _tile_release();
     return 0;
 }
-
