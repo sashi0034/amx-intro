@@ -11,6 +11,22 @@ void make_filter(Filter3x3 *filter) {
     }
 }
 
+void output_conv(const ConvOutput *output, const char *filename) {
+    FILE *file = fopen(filename, "w");
+    if (file == NULL) {
+        fprintf(stderr, "Error opening file %s\n", filename);
+        return;
+    }
+
+    for (int i = 0; i < LAST; ++i) {
+        fprint_SimMat(file, &output->mats[i]);
+        fprintf(file, "\n");
+    }
+
+    fclose(file);
+
+}
+
 void print_sample_layer(float f[restrict NB][NZ2][NY2][NX2]) {
     for (int y = 0; y < NY2; y++) {
         for (int x = 0; x < NX2; x++) {

@@ -28,13 +28,8 @@ static void convolution_gpu(
     }
 }
 
-static void mock_task(const float f[restrict NB][NZ2][NY2][NX2], const Filter3x3 *filter) {
-    SimMat output;
-    memset(&output, 0, sizeof(output));
-
-    convolution_gpu(output.mat, f[SAMPLE_LAYER_N][SAMPLE_LAYER_Z], filter->mat);
-
-    fprint_SimMat_to_file("output/out_gpu.txt", &output);
+static void mock_task(SimMat *output, float f[restrict NB][NZ2][NY2][NX2], const Filter3x3 *filter) {
+    convolution_gpu(output->mat, f[SAMPLE_LAYER_N][SAMPLE_LAYER_Z], filter->mat);
 }
 
 
@@ -47,17 +42,17 @@ int main() {
     Filter3x3 filter;
     make_filter(&filter);
 
+    ConvOutput output;
+    memset(&output, 0, sizeof(ConvOutput));
+
     // Main loop
     for (int ii = 1; ii <= LAST; ii++) {
         tick_sim_state(&simState, ii);
 
-        if (ii == 2) {
-            printf("----------------------------------------------- %d\n", ii);
-            // print_sample_layer(f);
-            mock_task(simState.f, &filter);
-            break;
-        }
+        mock_task(&output.mats[ii - 1], simState.f, &filter);
     }
+
+    output_conv(&output, "output/out_gpu.txt");
 
     return 0;
 }

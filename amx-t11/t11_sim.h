@@ -64,6 +64,12 @@ DEFINE_MATRIX(Filter3x3, FILTER_SIZE, FILTER_SIZE)
 
 void make_filter(Filter3x3 *filter);
 
+typedef struct ConvOutput {
+    SimMat mats[LAST];
+} ConvOutput;
+
+void output_conv(const ConvOutput *output, const char *filename);
+
 // -----------------------------------------------
 
 typedef struct SimState {
