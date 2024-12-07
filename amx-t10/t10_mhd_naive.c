@@ -128,7 +128,7 @@ static void mock_task(float f[restrict NB][NZ2][NY2][NX2], Filter3x3 *filter) {
     SimMat output;
     memset(&output, 0, sizeof(output));
 
-    SimMat *input = (SimMat *) (f[SAMPLE_LAYER_N][SAMPLE_LAYER_N]);
+    SimMat *input = (SimMat *) (f[SAMPLE_LAYER_N][SAMPLE_LAYER_Z]);
 
     convolution_naive(&output, input, filter);
 

@@ -109,11 +109,11 @@ void make_filter(Filter3x3 *filter) {
     }
 }
 
-static void mock_task(float f[restrict NB][NZ2][NY2][NX2], Filter3x3 *filter) {
+static void mock_task(const float f[restrict NB][NZ2][NY2][NX2], const Filter3x3 *filter) {
     SimMat output;
     memset(&output, 0, sizeof(output));
 
-    convolution_gpu(output.mat, f[SAMPLE_LAYER_N][SAMPLE_LAYER_N], filter->mat);
+    convolution_gpu(output.mat, f[SAMPLE_LAYER_N][SAMPLE_LAYER_Z], filter->mat);
 
     fprint_SimMat_to_file("output/out_gpu.txt", &output);
 }

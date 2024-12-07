@@ -20,6 +20,7 @@
             struct { \
                 float cols[(c)]; \
             } rows[(r)]; \
+            float mat[r][c]; \
         }; \
     } name; \
     \
@@ -210,10 +211,6 @@ static void store_patch_output(SimMat *output, int patchRaw, int col16) {
     __asm__ __volatile__ ("" : "+m" (output->fp32s));
 }
 
-static void init_patch_output(PatchOutputMat *patch_output) {
-    memset(patch_output, 0, sizeof(PatchOutputMat));
-}
-
 void convolution_amx(SimMat *output, const SimMat *input, const Filter3x3 *filter) {
     PatchInputMat patch_input;
     PatchFilterMat patch_filter;
@@ -221,7 +218,7 @@ void convolution_amx(SimMat *output, const SimMat *input, const Filter3x3 *filte
 
     load_patch_filter(&patch_filter, filter);
 
-    init_patch_output(&patch_output);
+    memset(&patch_output, 0, sizeof(PatchOutputMat));
 
     for (int patchRaw = 0; patchRaw < SIM_MAT_ROWS - FILTER_PADDING * 2; ++patchRaw) {
         for (int col16 = 0; col16 < SIM_MAT_COLS / PATCH_STRIDE_16; ++col16) {
@@ -265,16 +262,10 @@ void make_filter(Filter3x3 *filter) {
 }
 
 static void mock_task(float f[restrict NB][NZ2][NY2][NX2], Filter3x3 *filter) {
-    SimMat *input = (SimMat *) (f[SAMPLE_LAYER_N][SAMPLE_LAYER_Z]);
-//    SimMat input;
-//    for (int r = 0; r < SIM_MAT_ROWS; ++r) {
-//        for (int c = 0; c < SIM_MAT_COLS; ++c) {
-//            input.rows[r].cols[c] = f[SAMPLE_LAYER_N][SAMPLE_LAYER_Z][r][c];
-//        }
-//    }
-
     SimMat output;
     memset(&output, 0, sizeof(output));
+
+    SimMat *input = (SimMat *) (f[SAMPLE_LAYER_N][SAMPLE_LAYER_Z]);
 
     convolution_amx(&output, input, filter);
 
