@@ -28,7 +28,7 @@ static void convolution_gpu(
     }
 }
 
-static void mock_task(SimMat *output, float f[restrict NB][NZ2][NY2][NX2], const Filter3x3 *filter) {
+static void mock_task(SimMat *output, const float f[restrict NB][NZ2][NY2][NX2], const Filter3x3 *filter) {
     convolution_gpu(output->mat, f[SAMPLE_LAYER_N][SAMPLE_LAYER_Z], filter->mat);
 }
 

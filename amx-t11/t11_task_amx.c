@@ -117,26 +117,21 @@ static void init_tile_config() {
     _tile_loadconfig(&tile);
 }
 
-void load_patch_filter(PatchFilterMat *patch_filter, const Filter3x3 *filter) {
+void load_patch_filter(const Filter3x3 *filter) {
+    PatchFilterMat patch_filter;
     for (int r = 0; r < FILTER_SIZE; ++r) {
         for (int c = 0; c < FILTER_SIZE; ++c) {
             const int index = r * FILTER_SIZE + c;
-            patch_filter->rows[index / 2].cols[index % 2] = fp32_to_bf16(filter->rows[r].cols[c]);
+            patch_filter.rows[index / 2].cols[index % 2] = fp32_to_bf16(filter->rows[r].cols[c]);
         }
     }
 
-    _tile_loadd(PATCH_FILTER_REG_3, patch_filter->bf16s, PATCH_FILTER_COLS * sizeof(bf16_t));
+    _tile_loadd(PATCH_FILTER_REG_3, patch_filter.bf16s, PATCH_FILTER_COLS * sizeof(bf16_t));
 }
 
 void load_patch_input(PatchInputMat *patch_input, const SimMat *input, int patchRaw, int col16) {
     for (int pr = 0; pr < PATCH_INPUT_ROWS; ++pr) {
-        for (int pc = 0; pc < PATCH_INPUT_COLS; ++pc) {
-            if (pc >= FILTER_SIZE * FILTER_SIZE) {
-                // フィルタが存在しない部分
-                patch_input->rows[pr].cols[pc] = 0;
-                continue;
-            }
-
+        for (int pc = 0; pc < FILTER_SIZE * FILTER_SIZE; ++pc) {
             if (col16 * PATCH_STRIDE_16 + pr >= SIM_MAT_COLS - FILTER_PADDING * 2) {
                 // フィルタを適応しない部分
                 patch_input->rows[pr].cols[pc] = 0;
@@ -147,6 +142,10 @@ void load_patch_input(PatchInputMat *patch_input, const SimMat *input, int patch
             const int offsetC = col16 * PATCH_STRIDE_16 + pr + (pc % FILTER_SIZE);
 
             patch_input->rows[pr].cols[pc] = fp32_to_bf16(input->rows[offsetR].cols[offsetC]);
+        }
+
+        for (int pc = FILTER_SIZE * FILTER_SIZE; pc < PATCH_INPUT_COLS; ++pc) {
+            patch_input->rows[pr].cols[pc] = 0;
         }
     }
 
@@ -164,10 +163,7 @@ static void store_patch_output(SimMat *output, int patchRaw, int col16) {
 
 void convolution_amx(SimMat *output, const SimMat *input, const Filter3x3 *filter) {
     PatchInputMat patch_input;
-    PatchFilterMat patch_filter;
     PatchOutputMat patch_output;
-
-    load_patch_filter(&patch_filter, filter);
 
     memset(&patch_output, 0, sizeof(PatchOutputMat));
 
@@ -204,6 +200,7 @@ int main() {
 
     Filter3x3 filter;
     make_filter(&filter);
+    load_patch_filter(&filter);
 
     ConvOutput output;
     memset(&output, 0, sizeof(ConvOutput));
