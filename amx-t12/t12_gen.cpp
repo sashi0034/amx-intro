@@ -56,6 +56,8 @@ int main(int argc, char *argv[]) {
 
     const uint64_t test_cases = std::atoi(argv[1]);
 
+    std::cout << "Generating " << test_cases << " test cases..." << std::endl;
+
     std::vector<MatrixC> results;
     results.resize(test_cases);
 
@@ -77,6 +79,10 @@ int main(int argc, char *argv[]) {
         ofs.write(reinterpret_cast<const char *>(matrixA.data()), sizeof(matrixA));
 
         results[t] = multiply(matrixA, matrixB);
+
+        if (t % (test_cases / 10) == 0) {
+            std::cout << "Progress: " << t << "/" << test_cases << std::endl;
+        }
     }
 
     for (int64_t t = 0; t < test_cases; ++t) {
