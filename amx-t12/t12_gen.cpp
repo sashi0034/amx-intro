@@ -67,14 +67,14 @@ int main(int argc, char *argv[]) {
 
     ofs.write(reinterpret_cast<const char *>(&test_cases), sizeof(test_cases));
 
+    MatrixB matrixB;
+    generateMatrixB(matrixB);
+    ofs.write(reinterpret_cast<const char *>(matrixB.data()), sizeof(matrixB));
+
     for (int t = 0; t < test_cases; ++t) {
         MatrixA matrixA;
-        MatrixB matrixB;
         generateMatrixA(matrixA);
-        generateMatrixB(matrixB);
-
         ofs.write(reinterpret_cast<const char *>(matrixA.data()), sizeof(matrixA));
-        ofs.write(reinterpret_cast<const char *>(matrixB.data()), sizeof(matrixB));
 
         results[t] = multiply(matrixA, matrixB);
     }

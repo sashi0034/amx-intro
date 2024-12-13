@@ -58,32 +58,9 @@ typedef struct {
 } Dword8x8;
 
 typedef struct {
-    Bytes8x32 a;
-    Bytes8x32 b;
-    Dword8x8 c;
+    Bytes8x32 input;
+    Dword8x8 output;
 } MatrixTuple;
-
-// Initialize tile config
-static void init_tile_config(tile_config *tile) {
-    int i;
-    tile->palette_id = 1;
-    tile->start_row = 0;
-
-    tile->colsb[1] = MAX_ROWS_8 * DWORD_SIZE_4;
-    tile->rows[1] = MAX_ROWS_8;
-
-    tile->colsb[2] = MAX_COLS_32;
-    tile->rows[2] = MAX_ROWS_8;
-
-    tile->colsb[3] = MAX_COLS_32;
-    tile->rows[3] = MAX_ROWS_8;
-
-    AMX_LOG("Tile load start...\n");
-
-    _tile_loadconfig(tile);
-
-    AMX_LOG("Tile load end\n");
-}
 
 // Set_tiledata_use() - Invoke syscall to set ARCH_SET_STATE_USE
 static bool set_tiledata_use() {
@@ -106,6 +83,7 @@ static void init_dword8x8(Dword8x8 *mat, int32_t value) {
 
 typedef struct {
     int64_t cases;
+    int8_t *filter_buffer;
     int8_t *input_buffer;
     int32_t *result_buffer;
 } TestBuffer;
@@ -120,8 +98,11 @@ static bool read_test_buffer(TestBuffer *test_buffer) {
     fread(&test_buffer->cases, sizeof(test_buffer->cases), 1, file);
     printf("Test cases: %ld\n", test_buffer->cases);
 
-    test_buffer->input_buffer = (int8_t *) malloc(test_buffer->cases * (MAX_SRC_256 * 2) * sizeof(int8_t));
-    fread(test_buffer->input_buffer, sizeof(int8_t), test_buffer->cases * (MAX_SRC_256 * 2), file);
+    test_buffer->filter_buffer = (int8_t *) malloc(1 * (MAX_SRC_256) * sizeof(int8_t));
+    fread(test_buffer->filter_buffer, sizeof(int8_t), 1 * (MAX_SRC_256), file);
+
+    test_buffer->input_buffer = (int8_t *) malloc(test_buffer->cases * (MAX_SRC_256) * sizeof(int8_t));
+    fread(test_buffer->input_buffer, sizeof(int8_t), test_buffer->cases * (MAX_SRC_256), file);
 
     test_buffer->result_buffer = (int32_t *) malloc(test_buffer->cases * (MAX_DST_64) * sizeof(int32_t));
     fread(test_buffer->result_buffer, sizeof(int32_t), test_buffer->cases * (MAX_DST_64), file);
@@ -130,39 +111,59 @@ static bool read_test_buffer(TestBuffer *test_buffer) {
     return true;
 }
 
-static void init_all_tests_from_buffer(MatrixTuple *test_array, TestBuffer *buffer) {
+static void init_all_tests_from_buffer(MatrixTuple *test_array, Bytes8x32 *filter, TestBuffer *buffer) {
     for (int t = 0; t < buffer->cases; ++t) {
         MatrixTuple *mat = &test_array[t];
-        Bytes8x32 *a = &mat->a;
-        Bytes8x32 *b = &mat->b;
 
         for (int i = 0; i < MAX_SRC_256; ++i) {
-            a->bytes[i] = *(buffer->input_buffer++);
+            mat->input.bytes[i] = *(buffer->input_buffer++);
         }
 
-        for (int r = 0; r < MAX_COLS_32; r++) {
-            for (int c = 0; c < MAX_ROWS_8; ++c) {
-                // Note: The other matrix used in the AMX matrix product calculation is an irregular arrangement
-                b->rows[r / 4].cols[c * 4 + r % 4] = *(buffer->input_buffer++);
-            }
-        }
+        init_dword8x8(&mat->output, 0);
+    }
 
-        init_dword8x8(&mat->c, 0);
+    for (int r = 0; r < MAX_COLS_32; r++) {
+        for (int c = 0; c < MAX_ROWS_8; ++c) {
+            // Note: The other matrix used in the AMX matrix product calculation is an irregular arrangement
+            filter->rows[r / 4].cols[c * 4 + r % 4] = *(buffer->filter_buffer++);
+        }
     }
 }
 
-void compute_all_tests(MatrixTuple *test_array, int cases) {
+// Initialize tile config
+static void init_tile_config(tile_config *tile) {
+    tile->palette_id = 1;
+    tile->start_row = 0;
+
+    tile->colsb[1] = MAX_ROWS_8 * DWORD_SIZE_4;
+    tile->rows[1] = MAX_ROWS_8;
+
+    tile->colsb[2] = MAX_COLS_32;
+    tile->rows[2] = MAX_ROWS_8;
+
+    tile->colsb[3] = MAX_COLS_32;
+    tile->rows[3] = MAX_ROWS_8;
+
+    AMX_LOG("Tile load start...\n");
+
+    _tile_loadconfig(tile);
+
+    AMX_LOG("Tile load end\n");
+}
+
+void compute_all_tests(MatrixTuple *test_array, Bytes8x32 *filter, int64_t cases) {
+    _tile_loadd(3, filter->bytes, STRIDE_32);
+
     for (int t = 0; t < cases; ++t) {
         MatrixTuple *mat = &test_array[t];
-        _tile_loadd(2, mat->a.bytes, STRIDE_32);
-        _tile_loadd(3, mat->b.bytes, STRIDE_32);
-        _tile_loadd(1, mat->c.dwords, STRIDE_32);
+        _tile_loadd(2, mat->input.bytes, STRIDE_32);
+        _tile_loadd(1, mat->output.dwords, STRIDE_32);
 
         // Compute dot-product of bytes in tiles
         _tile_dpbssd(1, 2, 3);
 
         // Store the tile data to memory
-        _tile_stored(1, mat->c.dwords, STRIDE_32);
+        _tile_stored(1, mat->output.dwords, STRIDE_32);
     }
 }
 
@@ -173,7 +174,7 @@ static void check_result_validation(const MatrixTuple *test_array, TestBuffer *b
 
         for (int i = 0; i < MAX_DST_64; ++i) {
             int32_t r = *((*buffer).result_buffer++);
-            if (mat->c.dwords[i] != r) errors++;
+            if (mat->output.dwords[i] != r) errors++;
         }
     }
 
@@ -191,6 +192,7 @@ int main() {
 
     // Allocate memory for test cases
     MatrixTuple *test_array = (MatrixTuple *) malloc(buffer.cases * sizeof(MatrixTuple));
+    Bytes8x32 test_filter;
 
     // Request permission to linux kernel to run AMX
     if (!set_tiledata_use())
@@ -200,10 +202,10 @@ int main() {
     init_tile_config(&tile_data);
 
     // Load test cases for matrix product
-    init_all_tests_from_buffer(test_array, &buffer);
+    init_all_tests_from_buffer(test_array, &test_filter, &buffer);
 
     // Compute dot product for each test case
-    compute_all_tests(test_array, buffer.cases);
+    compute_all_tests(test_array, &test_filter, buffer.cases);
 
     // // Check if the result is correct
     check_result_validation(test_array, &buffer);
