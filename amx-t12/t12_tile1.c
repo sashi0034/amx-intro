@@ -153,7 +153,7 @@ static void init_tile_config(tile_config *tile) {
 void compute_all_tests(MatrixTuple *test_array, Bytes8x32 *filter, int64_t cases) {
     _tile_loadd(1, filter->bytes, STRIDE_32);
 
-    for (int t = 0; t < cases; ++t) {
+    for (int64_t t = 0; t < cases; ++t) {
         MatrixTuple *mat = &test_array[t];
         _tile_loadd(2, mat->input.bytes, STRIDE_32);
         _tile_loadd(3, mat->output.dwords, STRIDE_32);

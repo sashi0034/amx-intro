@@ -137,11 +137,13 @@ static void init_tile_config(tile_config *tile) {
     tile->colsb[1] = MAX_COLS_32 * sizeof(int8_t);
     tile->rows[1] = MAX_ROWS_8;
 
-    tile->colsb[2] = MAX_COLS_32 * sizeof(int8_t);
-    tile->rows[2] = MAX_ROWS_8;
+    for (int i = 0; i < 3; ++i) {
+        tile->colsb[2 + i * 2] = MAX_COLS_32 * sizeof(int8_t);
+        tile->rows[2 + i * 2] = MAX_ROWS_8;
 
-    tile->colsb[3] = MAX_ROWS_8 * sizeof(int32_t);
-    tile->rows[3] = MAX_ROWS_8;
+        tile->colsb[3 + i * 2] = MAX_ROWS_8 * sizeof(int32_t);
+        tile->rows[3 + i * 2] = MAX_ROWS_8;
+    }
 
     AMX_LOG("Tile load start...\n");
 
@@ -153,15 +155,36 @@ static void init_tile_config(tile_config *tile) {
 void compute_all_tests(MatrixTuple *test_array, Bytes8x32 *filter, int64_t cases) {
     _tile_loadd(1, filter->bytes, STRIDE_32);
 
-    for (int t = 0; t < cases; ++t) {
-        MatrixTuple *mat = &test_array[t];
-        _tile_loadd(2, mat->input.bytes, STRIDE_32);
-        _tile_loadd(3, mat->output.dwords, STRIDE_32);
+    const int64_t forward_cases = (cases / 3) * 3;
+    for (int64_t t = 0; t < forward_cases; t += 3) {
+        MatrixTuple *mat0 = &test_array[t];
+        MatrixTuple *mat1 = &test_array[t + 1];
+        MatrixTuple *mat2 = &test_array[t + 2];
 
-        // Compute dot-product of bytes in tiles
+        _tile_loadd(2, mat0->input.bytes, STRIDE_32);
+        _tile_loadd(3, mat0->output.dwords, STRIDE_32);
         _tile_dpbssd(3, 2, 1);
 
-        // Store the tile data to memory
+        _tile_loadd(4, mat1->input.bytes, STRIDE_32);
+        _tile_loadd(5, mat1->output.dwords, STRIDE_32);
+        _tile_dpbssd(5, 4, 1);
+
+        _tile_loadd(6, mat2->input.bytes, STRIDE_32);
+        _tile_loadd(7, mat2->output.dwords, STRIDE_32);
+        _tile_dpbssd(7, 6, 1);
+
+        _tile_stored(3, mat0->output.dwords, STRIDE_32);
+        _tile_stored(5, mat1->output.dwords, STRIDE_32);
+        _tile_stored(7, mat2->output.dwords, STRIDE_32);
+    }
+
+    for (int64_t int64 = forward_cases; int64 < cases; int64++) {
+        MatrixTuple *mat = &test_array[int64];
+
+        _tile_loadd(2, mat->input.bytes, STRIDE_32);
+        _tile_loadd(3, mat->output.dwords, STRIDE_32);
+        _tile_dpbssd(3, 2, 1);
+
         _tile_stored(3, mat->output.dwords, STRIDE_32);
     }
 }
