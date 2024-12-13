@@ -166,7 +166,7 @@ void compute_all_tests(MatrixTuple *test_array, Bytes8x32 *filter, int64_t cases
         _tile_loadd(3, mat0->output.dwords, STRIDE_32);
         _tile_dpbssd(3, 2, 1);
 
-        _tile_loadd(4, mat1->input.bytes, STRIDE_32);c
+        _tile_loadd(4, mat1->input.bytes, STRIDE_32);
         _tile_loadd(5, mat1->output.dwords, STRIDE_32);
         _tile_dpbssd(5, 4, 1);
 
