@@ -8,7 +8,7 @@ mkdir results
 # テスト生成
 
 ```
-icpc -O3 t12_gen.cpp -o build/t12_gen && build/t12_gen 5000000
+icpc -O3 t12_gen.cpp -o build/t12_gen && build/t12_gen 80000000
 ```
 
 実行 1

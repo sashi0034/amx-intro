@@ -5,6 +5,7 @@
 #include <sys/syscall.h>
 #include <unistd.h>
 #include <stdbool.h>
+#include <time.h>
 
 #define MAX_SRC_256 256
 #define MAX_DST_64 64
@@ -180,6 +181,12 @@ static void check_result_validation(const MatrixTuple *test_array, TestBuffer *b
     printf("Errors: %d\n", errors);
 }
 
+static void stamp_time_used(clock_t start, const char *message) {
+    clock_t end = clock();
+    double time_used = ((double) (end - start)) / CLOCKS_PER_SEC;
+    printf("%s: %f\n", message, time_used);
+}
+
 int main() {
     TestBuffer buffer;
     if (!read_test_buffer(&buffer)) {
@@ -204,7 +211,9 @@ int main() {
     init_all_tests_from_buffer(test_array, &test_filter, &buffer);
 
     // Compute dot product for each test case
+    const clock_t compute_started = clock();
     compute_all_tests(test_array, &test_filter, buffer.cases);
+    stamp_time_used(compute_started, "Compute time");
 
     // // Check if the result is correct
     check_result_validation(test_array, &buffer);
