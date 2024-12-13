@@ -11,7 +11,6 @@
 #define MAX_ROWS_8 8
 #define MAX_COLS_32 32
 #define STRIDE_32 32
-#define DWORD_SIZE_4 4
 
 #define ARCH_GET_XCOMP_PERM     0x1022
 #define ARCH_REQ_XCOMP_PERM     0x1023
@@ -135,13 +134,13 @@ static void init_tile_config(tile_config *tile) {
     tile->palette_id = 1;
     tile->start_row = 0;
 
-    tile->colsb[1] = MAX_ROWS_8 * DWORD_SIZE_4;
+    tile->colsb[1] = MAX_COLS_32 * sizeof(int8_t);
     tile->rows[1] = MAX_ROWS_8;
 
-    tile->colsb[2] = MAX_COLS_32;
+    tile->colsb[2] = MAX_COLS_32 * sizeof(int8_t);
     tile->rows[2] = MAX_ROWS_8;
 
-    tile->colsb[3] = MAX_COLS_32;
+    tile->colsb[3] = MAX_ROWS_8 * sizeof(int32_t);
     tile->rows[3] = MAX_ROWS_8;
 
     AMX_LOG("Tile load start...\n");
@@ -152,18 +151,18 @@ static void init_tile_config(tile_config *tile) {
 }
 
 void compute_all_tests(MatrixTuple *test_array, Bytes8x32 *filter, int64_t cases) {
-    _tile_loadd(3, filter->bytes, STRIDE_32);
+    _tile_loadd(1, filter->bytes, STRIDE_32);
 
     for (int t = 0; t < cases; ++t) {
         MatrixTuple *mat = &test_array[t];
         _tile_loadd(2, mat->input.bytes, STRIDE_32);
-        _tile_loadd(1, mat->output.dwords, STRIDE_32);
+        _tile_loadd(3, mat->output.dwords, STRIDE_32);
 
         // Compute dot-product of bytes in tiles
-        _tile_dpbssd(1, 2, 3);
+        _tile_dpbssd(3, 2, 1);
 
         // Store the tile data to memory
-        _tile_stored(1, mat->output.dwords, STRIDE_32);
+        _tile_stored(3, mat->output.dwords, STRIDE_32);
     }
 }
 
