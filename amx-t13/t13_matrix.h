@@ -47,4 +47,52 @@ DEFINE_MATRIX(Filter3x3, FILTER_SIZE, FILTER_SIZE)
 
 #define SRC_MAT_ROWS 192
 #define SRC_MAT_COLS 192
+
 DEFINE_MATRIX(SrcMat, SRC_MAT_ROWS, SRC_MAT_COLS)
+
+typedef SrcMat DstMat;
+
+static int output_dst(const DstMat *dsts, const char *output_path) {
+    FILE *file = fopen("choice.txt", "r");
+    if (file == NULL) {
+        perror("Failed to open file");
+        return 1;
+    }
+
+    int count;
+    if (fscanf(file, "%d", &count) != 1) {
+        fprintf(stderr, "Failed to read count\n");
+        fclose(file);
+        return 1;
+    }
+
+    FILE *output_file = fopen(output_path, "w");
+    if (output_file == NULL) {
+        perror("Failed to open output file");
+        fclose(file);
+        return 1;
+    }
+
+    printf("choices: %d\n", count);
+
+    // Read `count` ints from the file and print them
+    for (int i = 0; i < count; i++) {
+        int index;
+        if (fscanf(file, "%d", &index) != 1) {
+            fprintf(stderr, "Failed to read index %d\n", i);
+            fclose(file);
+            fclose(output_file);
+            return 1;
+        }
+
+        fprintf(output_file, "[%d] %d\n", i, index);
+        fprint_SrcMat(output_file, &dsts[index]);
+    }
+
+    fclose(file);
+    fclose(output_file);
+
+    printf("Finished writing to %s\n", output_path);
+
+    return 0;
+}

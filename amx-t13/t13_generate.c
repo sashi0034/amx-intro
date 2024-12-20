@@ -45,13 +45,13 @@ int main(int argc, char *argv[]) {
     // Generate and write a random Filter3x3 to file
     Filter3x3 filter;
     generate_random_Filter3x3(&filter);
-    fwrite(filter.fp32s, sizeof(float), FILTER_SIZE * FILTER_SIZE, file);
+    fwrite(filter.fp32s, sizeof(Filter3x3), 1, file);
 
     // Generate and write count SimMats to file
     for (int i = 0; i < count; ++i) {
         SrcMat mat;
         generate_random_SrcMat(&mat);
-        fwrite(mat.fp32s, sizeof(float), SRC_MAT_ROWS * SRC_MAT_COLS, file);
+        fwrite(mat.fp32s, sizeof(SrcMat), 1, file);
     }
 
     fclose(file);
