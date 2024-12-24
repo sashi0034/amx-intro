@@ -4,16 +4,17 @@ import glob
 import shutil
 
 # Define test cases
-# test_cases = [
-#     100000,
-#     200000,
-#     400000,
-#     800000,
-#     1600000,
-#     3200000,
-#     6400000,
-#     12800000,
-# ]
+test_cases = [
+    100000,
+    200000,
+    400000,
+    # 800000,
+    # 1600000,
+    # 3200000,
+    # 6400000,
+    # 12800000,
+]
+
 
 # test_cases = [100000 + 990000 * (i + 1) for i in range(10)]
 
@@ -21,7 +22,7 @@ import shutil
 
 # test_cases = [14000000, 14500000, 15000000]
 
-test_cases = [16000000, 17000000, 18000000, 19000000, 20000000]
+# test_cases = [16000000, 17000000, 18000000, 19000000, 20000000]
 
 
 def clear_results_directory():
@@ -46,55 +47,48 @@ def find_latest_result_dir(base_name):
         raise FileNotFoundError(f"No result directory found matching {base_name}")
 
 
+def run_vtune_profile(label, compile):
+    build = f"build/t20_{label}"
+    run_command(
+        compile + f" -o {build} && "
+                  f"module load intel-vtune && "
+                  f"tssrun -p gr10034a --rsc m=50G vtune -collect hotspots -r=./results/result_{label}_{cases} {build}")
+    result_dir = find_latest_result_dir(f"./results/result_{label}_{cases}")
+    report_command = (
+        f"module load intel-vtune && "
+        f"vtune -report hotspots -result-dir {result_dir} -format text -filter compute_dot_products > data/data_{label}_{cases}.txt"
+    )
+    run_command(report_command)
+
+
 if __name__ == '__main__':
     # Clear the results directory
     clear_results_directory()
 
     for cases in test_cases:
-        # 1. Compile and run t7_gen with each test case
-        gen_command = f"icpc -O3 t7_gen.cpp -o build/t7_gen && build/t7_gen {cases}"
+        # 1. Compile and run t20_generate with each test case
+        gen_command = f"icpc -O3 t20_generate.cpp -o build/t20_generate && build/t20_generate {cases}"
         run_command(gen_command)
 
-        # 2. Run the VTune profiling for t7_amx.c
-        amx_command = (
-            f"icc -g -O3 t7_amx.c -o build/t7_amx && "
-            f"module load intel-vtune && "
-            f"tssrun -p gr10034a --rsc m=50G vtune -collect hotspots -r=./results/result_amx_{cases} build/t7_amx"
+        # 2. Run the VTune profiling
+        run_vtune_profile(
+            "amx",
+            f"icc -g -O3 t20_amx.c"
         )
-        run_command(amx_command)
-        result_amx_dir = find_latest_result_dir(f"./results/result_amx_{cases}")
-        amx_report_command = (
-            f"module load intel-vtune && "
-            f"vtune -report hotspots -result-dir {result_amx_dir} -format text -filter compute_all_tests > data/data_amx_{cases}.txt"
-        )
-        run_command(amx_report_command)
 
-        # 3. Run the VTune profiling for AVX512 in t7_noamx.c
-        avx512_command = (
-            f"icc -g -xCORE-AVX512 -qopt-zmm-usage=high -O3 t7_noamx.c -o build/t7_avx512 && "
-            f"module load intel-vtune && "
-            f"tssrun -p gr10034a --rsc m=50G vtune -collect hotspots -r=./results/result_avx512_{cases} build/t7_avx512"
+        run_vtune_profile(
+            "avx512",
+            f"icc -g -xCOMMON-AVX512 -O3 t20_avx.c"
         )
-        run_command(avx512_command)
-        result_avx512_dir = find_latest_result_dir(f"./results/result_avx512_{cases}")
-        avx512_report_command = (
-            f"module load intel-vtune && "
-            f"vtune -report hotspots -result-dir {result_avx512_dir} -format text -filter compute_all_tests > data/data_avx512_{cases}.txt"
-        )
-        run_command(avx512_report_command)
 
-        # 4. Run the VTune profiling for NoAMX in t7_noamx.c
-        noamx_command = (
-            f"icc -g -O3 t7_noamx.c -o build/t7_noamx && "
-            f"module load intel-vtune && "
-            f"tssrun -p gr10034a --rsc m=50G vtune -collect hotspots -r=./results/result_noamx_{cases} build/t7_noamx"
+        run_vtune_profile(
+            "avx2",
+            f"icc -g -xAVX2 -O3 t20_avx.c"
         )
-        run_command(noamx_command)
-        result_noamx_dir = find_latest_result_dir(f"./results/result_noamx_{cases}")
-        noamx_report_command = (
-            f"module load intel-vtune && "
-            f"vtune -report hotspots -result-dir {result_noamx_dir} -format text -filter compute_all_tests > data/data_noamx_{cases}.txt"
+
+        run_vtune_profile(
+            "sse42",
+            f"icc -g -xSSE4.2 -O3 t20_avx.c"
         )
-        run_command(noamx_report_command)
 
         print(f"Completed loop for cases = {cases}")
