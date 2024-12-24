@@ -55,7 +55,7 @@ typedef struct {
 
 // -----------------------------------------------
 
-void dot_product(dword8x8_t *c, const bytes8x32_t *a, const bytes8x32_t *b) {
+void dot_product(dword8x8_t *restrict c, const bytes8x32_t *restrict a, const bytes8x32_t *restrict b) {
     for (int i = 0; i < 8; i++) {
         for (int j = 0; j < 8; j++) {
             for (int k = 0; k < 32; k++) {
