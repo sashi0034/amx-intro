@@ -25,9 +25,9 @@ typedef struct {
         } rows[8];
         int8_t bytes[8 * 32];
     };
-} Bytes8x32;
+} bytes8x32_t;
 
-typedef Bytes8x32 Bytes32x8t; // Transposed
+typedef bytes8x32_t bytes32x8transposed_t; // Transposed
 
 typedef struct {
     union {
@@ -36,7 +36,7 @@ typedef struct {
         } rows[32];
         int8_t bytes[32 * 8];
     };
-} Bytes32x8;
+} bytes32x8_t;
 
 typedef struct {
     union {
@@ -45,17 +45,17 @@ typedef struct {
         } rows[8];
         int32_t dwords[8 * 8];
     };
-} Dword8x8;
+} dword8x8_t;
 
 typedef struct {
-    Bytes8x32 a;
-    Bytes32x8t b;
-    Dword8x8 c;
-} MatrixSet;
+    bytes8x32_t a;
+    bytes32x8transposed_t b;
+    dword8x8_t c;
+} matrix_set_t;
 
 // -----------------------------------------------
 
-void dot_product(Dword8x8 *c, const Bytes8x32 *a, const Bytes32x8t *b) {
+void dot_product(dword8x8_t *c, const bytes8x32_t *a, const bytes8x32_t *b) {
     for (int i = 0; i < 8; i++) {
         for (int j = 0; j < 8; j++) {
             for (int k = 0; k < 32; k++) {
@@ -71,9 +71,9 @@ typedef struct {
     int64_t cases;
     int8_t *input_buffer;
     int32_t *result_buffer;
-} TestBuffer;
+} test_buffer_t;
 
-static bool read_test_buffer(TestBuffer *test_buffer) {
+static bool read_test_buffer(test_buffer_t *test_buffer) {
     FILE *file = fopen("test.bin", "rb");
     if (file == NULL) {
         fprintf(stderr, "Failed to open file\n");
@@ -93,11 +93,11 @@ static bool read_test_buffer(TestBuffer *test_buffer) {
     return true;
 }
 
-static void init_from_test_buffer(MatrixSet *matrix_set, TestBuffer *buffer) {
+static void init_from_test_buffer(matrix_set_t *matrix_set, test_buffer_t *buffer) {
     for (int t = 0; t < buffer->cases; ++t) {
-        MatrixSet *mat = &matrix_set[t];
-        Bytes8x32 *a = &mat->a;
-        Bytes32x8t *b = &mat->b;
+        matrix_set_t *mat = &matrix_set[t];
+        bytes8x32_t *a = &mat->a;
+        bytes32x8transposed_t *b = &mat->b;
         for (int i = 0; i < MAX_SRC_256; ++i) {
             a->bytes[i] = *(buffer->input_buffer++);
         }
@@ -108,21 +108,21 @@ static void init_from_test_buffer(MatrixSet *matrix_set, TestBuffer *buffer) {
             }
         }
 
-        memset(&mat->c, 0, sizeof(Dword8x8));
+        memset(&mat->c, 0, sizeof(dword8x8_t));
     }
 }
 
-void compute_dot_products(MatrixSet *matrix_set, int64_t cases) {
+void compute_dot_products(matrix_set_t *matrix_set, int64_t cases) {
     for (int t = 0; t < cases; ++t) {
-        MatrixSet *mat = &matrix_set[t];
+        matrix_set_t *mat = &matrix_set[t];
         dot_product(&mat->c, &mat->a, &mat->b);
     }
 }
 
-static void check_result_validation(const MatrixSet *matrix_set, TestBuffer *buffer) {
+static void check_result_validation(const matrix_set_t *matrix_set, test_buffer_t *buffer) {
     int errors = 0;
     for (int t = 0; t < (*buffer).cases; ++t) {
-        const MatrixSet *mat = &matrix_set[t];
+        const matrix_set_t *mat = &matrix_set[t];
 
         for (int i = 0; i < MAX_DST_64; ++i) {
             int32_t r = *((*buffer).result_buffer++);
@@ -134,14 +134,14 @@ static void check_result_validation(const MatrixSet *matrix_set, TestBuffer *buf
 }
 
 int main() {
-    TestBuffer buffer;
+    test_buffer_t buffer;
     if (!read_test_buffer(&buffer)) {
         printf("Failed to read test buffer\n");
         return -1;
     }
 
     // Allocate memory for test cases
-    MatrixSet *matrix_set = (MatrixSet *) malloc(buffer.cases * sizeof(MatrixSet));
+    matrix_set_t *matrix_set = (matrix_set_t *) malloc(buffer.cases * sizeof(matrix_set_t));
 
     // Load test cases for matrix product
     init_from_test_buffer(matrix_set, &buffer);
@@ -156,4 +156,3 @@ int main() {
 
     return 0;
 }
-
