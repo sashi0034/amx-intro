@@ -27,6 +27,8 @@ typedef struct {
     };
 } Bytes8x32;
 
+typedef Bytes8x32 Bytes32x8t; // Transposed
+
 typedef struct {
     union {
         struct {
@@ -47,17 +49,17 @@ typedef struct {
 
 typedef struct {
     Bytes8x32 a;
-    Bytes32x8 b;
+    Bytes32x8t b;
     Dword8x8 c;
 } MatrixSet;
 
 // -----------------------------------------------
 
-void dot_product(Dword8x8 *c, const Bytes8x32 *a, const Bytes32x8 *b) {
+void dot_product(Dword8x8 *c, const Bytes8x32 *a, const Bytes32x8t *b) {
     for (int i = 0; i < 8; i++) {
         for (int j = 0; j < 8; j++) {
             for (int k = 0; k < 32; k++) {
-                c->rows[i].cols[j] += a->rows[i].cols[k] * b->rows[k].cols[j];
+                c->rows[i].cols[j] += a->rows[i].cols[k] * b->rows[j].cols[k];
             }
         }
     }
@@ -95,13 +97,15 @@ static void init_from_test_buffer(MatrixSet *matrix_set, TestBuffer *buffer) {
     for (int t = 0; t < buffer->cases; ++t) {
         MatrixSet *mat = &matrix_set[t];
         Bytes8x32 *a = &mat->a;
-        Bytes32x8 *b = &mat->b;
+        Bytes32x8t *b = &mat->b;
         for (int i = 0; i < MAX_SRC_256; ++i) {
             a->bytes[i] = *(buffer->input_buffer++);
         }
 
-        for (int i = 0; i < MAX_SRC_256; ++i) {
-            b->bytes[i] = *(buffer->input_buffer++);
+        for (int c = 0; c < 32; ++c) {
+            for (int r = 0; r < 8; r++) {
+                b->rows[r].cols[c] = *(buffer->input_buffer++);
+            }
         }
 
         memset(&mat->c, 0, sizeof(Dword8x8));

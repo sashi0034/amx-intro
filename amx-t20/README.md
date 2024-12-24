@@ -27,6 +27,10 @@ icc -g -O3 t20_amx.c -o build/t20_amx && tssrun -p gr10034a --rsc m=50G build/t2
 icc -g -xCORE-AVX512 -qopt-zmm-usage=high -O3 t20_naive.c -o build/t20_avx512 && build/t20_avx512
 ```
 
+```
+icc -g -xCORE-AVX512 -qopt-zmm-usage=high -O3 t20_avx512.c -o build/t20_avx512 && build/t20_avx512
+```
+
 コンパイルしてから VTune プロファイル
 
 - AMX
@@ -39,12 +43,12 @@ tssrun -p gr10034a --rsc m=1G vtune -collect hotspots -r=./results/result_amx bu
 
 AVX-512
 ```sh
-icc -g -xCOMMON-AVX512 -O3 t20_naive.c -o build/t20_avx512 && \
+icc -g -xCOMMON-AVX512 -O3 t20_avx512.c -o build/t20_avx512 && \
 module load intel-vtune && \
 tssrun -p gr10034a --rsc m=1G vtune -collect hotspots -r=./results/result_avx512 build/t20_avx512
 ```
 
-No-AMX
+Naive
 ```sh
 icc -g -O3 t20_naive.c -o build/t20_naive && \
 module load intel-vtune && \
