@@ -16,7 +16,7 @@ SIMD 関連
 
 ```
 icc -O3 -S t20_amx.c -o build/t20_amx.s
-```~~~~
+```
 
 - AVX-512
 

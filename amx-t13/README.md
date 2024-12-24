@@ -31,4 +31,3 @@ icc -g -O2 t13_amx.c -o build/t13_amx && \
 module load intel-vtune && \
 tssrun -p gr10034a --rsc m=50G vtune -collect hotspots -r=./results/t13_amx build/t13_amx
 ```
-
