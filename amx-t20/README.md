@@ -16,7 +16,7 @@ SIMD 関連
 
 ```
 icc -O3 -S t20_amx.c -o build/t20_amx.s
-```
+```~~~~
 
 - AVX-512
 
@@ -47,7 +47,7 @@ icc -g -xCORE-AVX512 -qopt-zmm-usage=high -O3 t20_naive.c -o build/t20_avx512 &&
 ```
 
 ```
-icc -g -xCORE-AVX512 -qopt-zmm-usage=high -O3 t20_avx512.c -o build/t20_avx512 && build/t20_avx512
+icc -g -xCORE-AVX512 -qopt-zmm-usage=high -O3 t20_avx.c -o build/t20_avx512 && build/t20_avx512
 ```
 
 コンパイルしてから VTune プロファイル
@@ -62,7 +62,7 @@ tssrun -p gr10034a --rsc m=1G vtune -collect hotspots -r=./results/result_amx bu
 
 AVX-512
 ```sh
-icc -g -xCOMMON-AVX512 -O3 t20_avx512.c -o build/t20_avx512 && \
+icc -g -xCOMMON-AVX512 -O3 t20_avx.c -o build/t20_avx512 && \
 module load intel-vtune && \
 tssrun -p gr10034a --rsc m=1G vtune -collect hotspots -r=./results/result_avx512 build/t20_avx512
 ```
