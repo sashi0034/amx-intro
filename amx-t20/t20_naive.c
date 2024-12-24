@@ -5,6 +5,7 @@
 #include <sys/syscall.h>
 #include <unistd.h>
 #include <stdbool.h>
+#include <memory.h>
 
 #define MAX_SRC_256 256
 #define MAX_DST_64 64
@@ -18,34 +19,28 @@
 #define DWORD_SIZE_4 4
 
 typedef struct {
-    int8_t cols[32];
-} Bytes32;
-
-typedef struct {
     union {
-        Bytes32 rows[8];
+        struct {
+            int8_t cols[32];
+        } rows[8];
         int8_t bytes[8 * 32];
     };
 } Bytes8x32;
 
 typedef struct {
-    int8_t cols[8];
-} Bytes8;
-
-typedef struct {
     union {
-        Bytes8 rows[32];
+        struct {
+            int8_t cols[8];
+        } rows[32];
         int8_t bytes[32 * 8];
     };
 } Bytes32x8;
 
 typedef struct {
-    int32_t cols[8];
-} Dword8;
-
-typedef struct {
     union {
-        Dword8 rows[8];
+        struct {
+            int32_t cols[8];
+        } rows[8];
         int32_t dwords[8 * 8];
     };
 } Dword8x8;
@@ -54,20 +49,12 @@ typedef struct {
     Bytes8x32 a;
     Bytes32x8 b;
     Dword8x8 c;
-} MatrixTuple;
+} MatrixSet;
 
-static void init_dword8x8(Dword8x8 *buf, int32_t value) {
-    for (int i = 0; i < MAT_A_ROWS_8; i++) {
-        for (int j = 0; j < MAT_B_COLS_8; j++) {
-            buf->rows[i].cols[j] = value;
-        }
-    }
-}
-
-static void compute_dot_product(Dword8x8 *c, Bytes8x32 *a, Bytes32x8 *b) {
-    for (int i = 0; i < MAT_A_ROWS_8; i++) {
-        for (int j = 0; j < MAT_B_COLS_8; j++) {
-            for (int k = 0; k < MAT_A_COLS_32; k++) {
+void dot_product(Dword8x8 *c, const Bytes8x32 *a, const Bytes32x8 *b) {
+    for (int i = 0; i < 8; i++) {
+        for (int j = 0; j < 8; j++) {
+            for (int k = 0; k < 32; k++) {
                 c->rows[i].cols[j] += a->rows[i].cols[k] * b->rows[k].cols[j];
             }
         }
@@ -100,9 +87,9 @@ static bool read_test_buffer(TestBuffer *test_buffer) {
     return true;
 }
 
-static void init_all_tests_from_buffer(MatrixTuple *test_array, TestBuffer *buffer) {
+static void init_from_test_buffer(MatrixSet *matrix_set, TestBuffer *buffer) {
     for (int t = 0; t < buffer->cases; ++t) {
-        MatrixTuple *mat = &test_array[t];
+        MatrixSet *mat = &matrix_set[t];
         Bytes8x32 *a = &mat->a;
         Bytes32x8 *b = &mat->b;
         for (int i = 0; i < MAX_SRC_256; ++i) {
@@ -113,21 +100,21 @@ static void init_all_tests_from_buffer(MatrixTuple *test_array, TestBuffer *buff
             b->bytes[i] = *(buffer->input_buffer++);
         }
 
-        init_dword8x8(&mat->c, 0);
+        memset(&mat->c, 0, sizeof(Dword8x8));
     }
 }
 
-void compute_all_tests(MatrixTuple *test_array, int cases) {
+void compute_dot_products(MatrixSet *matrix_set, int64_t cases) {
     for (int t = 0; t < cases; ++t) {
-        MatrixTuple *mat = &test_array[t];
-        compute_dot_product(&mat->c, &mat->a, &mat->b);
+        MatrixSet *mat = &matrix_set[t];
+        dot_product(&mat->c, &mat->a, &mat->b);
     }
 }
 
-static void check_result_validation(const MatrixTuple *test_array, TestBuffer *buffer) {
+static void check_result_validation(const MatrixSet *matrix_set, TestBuffer *buffer) {
     int errors = 0;
     for (int t = 0; t < (*buffer).cases; ++t) {
-        const MatrixTuple *mat = &test_array[t];
+        const MatrixSet *mat = &matrix_set[t];
 
         for (int i = 0; i < MAX_DST_64; ++i) {
             int32_t r = *((*buffer).result_buffer++);
@@ -146,18 +133,18 @@ int main() {
     }
 
     // Allocate memory for test cases
-    MatrixTuple *test_array = (MatrixTuple *) malloc(buffer.cases * sizeof(MatrixTuple));
+    MatrixSet *matrix_set = (MatrixSet *) malloc(buffer.cases * sizeof(MatrixSet));
 
     // Load test cases for matrix product
-    init_all_tests_from_buffer(test_array, &buffer);
+    init_from_test_buffer(matrix_set, &buffer);
 
     // Compute dot product for each test case
-    compute_all_tests(test_array, buffer.cases);
+    compute_dot_products(matrix_set, buffer.cases);
 
     // Check if the result is correct
-    check_result_validation(test_array, &buffer);
+    check_result_validation(matrix_set, &buffer);
 
-    free(test_array);
+    free(matrix_set);
 
     return 0;
 }
