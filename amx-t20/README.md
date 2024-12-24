@@ -1,7 +1,14 @@
 
-# 10月: AMX と AVX-512 比較
-
 https://web.kudpc.kyoto-u.ac.jp/manual/ja/compilers/intel_vtune
+
+
+コンパイラオプション
+
+- https://www.intel.com/content/www/us/en/docs/cpp-compiler/developer-guide-reference/2021-8/alphabetical-option-list.html
+
+SIMD 関連
+
+- https://en.wikipedia.org/wiki/AVX-512
 
 アセンブリ確認
 
@@ -15,6 +22,18 @@ icc -O3 -S t20_amx.c -o build/t20_amx.s
 
 ```
 icc -g -xCOMMON-AVX512 -O3 -S t20_naive.c -o build/t20_avx512.s
+```
+
+- ymm のみ
+
+```
+icc -g -xCORE-AVX2 -O3 -S t20_naive.c -o build/t20_avx512.s
+```
+
+- xmm のみ
+
+```
+icc -g -xSSE4.2 -O3 -S t20_naive.c -o build/t20_avx512.s
 ```
 
 コンパイルしてから実行
