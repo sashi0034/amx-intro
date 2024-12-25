@@ -68,14 +68,14 @@ if __name__ == "__main__":
     plt.plot(sorted_cases, sse42_items, marker='o', label="SSE4.2")
 
     # グラフの装飾
-    plt.xlabel("Test Case Number")
-    plt.ylabel("Execution Time (seconds)")
-    plt.title("Execution Time Comparison for AMX, AVX-512, AVX2, and SSE4.2")
+    plt.xlabel("Number of matrix products")
+    plt.ylabel("Computation Time (seconds)")
+    plt.title("Computation Time Comparison for AMX, AVX-512, AVX2, and SSE4.2")
     plt.legend()
     plt.grid(True)
 
     # 画像の保存
-    plt.savefig("execution_time_comparison.png")
+    plt.savefig("computation_time_comparison.png")
 
     # グラフの表示
     plt.show()

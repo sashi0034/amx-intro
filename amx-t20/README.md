@@ -64,7 +64,7 @@ AVX-512
 ```sh
 icc -g -xCOMMON-AVX512 -O3 t20_avx.c -o build/t20_avx512 && \
 module load intel-vtune && \
-tssrun -p gr10034a --rsc m=1G vtune -collect hotspots -r=./results/result_avx512 build/t20_avx512
+tssrun -p gr10034a --rsc m=50G vtune -collect hotspots -r=./results/result_avx512 build/t20_avx512
 ```
 
 Naive
