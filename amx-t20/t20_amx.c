@@ -54,7 +54,7 @@ typedef struct {
 } matrix_set_t;
 
 // Initialize tile config
-static void init_tile_config_t() {
+static void init_tile_config() {
     tile_config_t tile = {0};
     tile.palette_id = 1;
     tile.start_row = 0;
@@ -175,7 +175,7 @@ int main() {
     if (!syscall_for_amx()) return -1;
 
     // Load tile configuration
-    init_tile_config_t();
+    init_tile_config();
 
     // Load test cases for matrix product
     init_all_tests_from_buffer(test_array, &buffer);
