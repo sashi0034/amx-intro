@@ -59,7 +59,7 @@ typedef struct { // __tile_config
 #define PATCH_OUTPUT_ROWS PATCH_INPUT_ROWS
 #define PATCH_OUTPUT_COLS 1
 
-DEFINE_BF16MAT(PatchInputMat, PATCH_INPUT_ROWS, PATCH_INPUT_COLS) // 16x10
+DEFINE_BF16MAT(PatchInputMat, PATCH_INPUT_ROWS, PATCH_INPUT_COLS)
 
 DEFINE_BF16MAT(PatchFilterMat, PATCH_FILTER_ROWS, PATCH_FILTER_COLS)
 
@@ -118,21 +118,22 @@ void load_patch_filter(PatchFilterMat *patch_filter, const filter3x3_t *filter) 
 void load_patch_input(PatchInputMat *patch_input, const matrix_t *input, int patchRaw, int col16) {
     for (int pr = 0; pr < PATCH_INPUT_ROWS; ++pr) {
         for (int pc = 0; pc < PATCH_INPUT_COLS; ++pc) {
-//            if (pc >= FILTER_SIZE * FILTER_SIZE) {
-//                // フィルタが存在しない部分
-//                patch_input->rows[pr].cols[pc] = 0;
-//                continue;
-//            }
-//
-//            if (col16 * PATCH_STRIDE_16 + pr >= MATRIX_COLS - FILTER_OFFSET * 2) {
-//                // フィルタを適応しない部分
-//                patch_input->rows[pr].cols[pc] = 0;
-//                continue;
-//            }
+            if (pc >= FILTER_SIZE * FILTER_SIZE) {
+                // フィルタが存在しない部分
+                patch_input->rows[pr].cols[pc] = 0;
+                continue;
+            }
+
+            if (col16 * PATCH_STRIDE_16 + pr >= MATRIX_COLS - FILTER_OFFSET * 2) {
+                // フィルタを適応しない部分
+                patch_input->rows[pr].cols[pc] = 0;
+                continue;
+            }
 
             const int offsetR = patchRaw + (pc / FILTER_SIZE);
             const int offsetC = col16 * PATCH_STRIDE_16 + pr + (pc % FILTER_SIZE);
 
+            // TODO: AVX-512 を使う
             patch_input->rows[pr].cols[pc] = fp32_to_bf16(input->rows[offsetR].cols[offsetC]);
         }
     }
@@ -193,6 +194,11 @@ int main() {
     }
 
     matrix_t output;
+    for (int r = 0; r < MATRIX_ROWS; ++r) {
+        for (int c = 0; c < MATRIX_COLS; ++c) {
+            output.rows[r].cols[c] = 0.0f;
+        }
+    }
 
     filter3x3_t f;
     for (int r = 0; r < FILTER_SIZE; ++r) {
@@ -203,16 +209,15 @@ int main() {
 
     // -----------------------------------------------
 
+    // convolution_naive(&output, &input, &f);
+
+    // -----------------------------------------------
+
     prepare_system_for_amx();
+
     init_tile_config();
 
-    for (int i = 0; i < CONVOLUTION_COUNT; i++) {
-        memset(&output, 0, sizeof(matrix_t));
-
-        convolution_amx(&output, &input, &f);
-
-        f.fp32s[0] = output.rows[0].cols[0];
-    }
+    convolution_amx(&output, &input, &f);
 
     _tile_release();
 

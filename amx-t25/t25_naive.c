@@ -45,11 +45,13 @@ int main() {
 
     // -----------------------------------------------
 
-    convolution_naive(&output, &input, &f);
+    for (int i = 0; i < CONVOLUTION_COUNT; i++) {
+        memset(&output, 0, sizeof(matrix_t));
 
-    // -----------------------------------------------
+        convolution_naive(&output, &input, &f);
 
-    _tile_release();
+        f.fp32s[0] = output.rows[0].cols[0];
+    }
 
     // -----------------------------------------------
 
