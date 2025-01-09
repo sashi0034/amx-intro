@@ -1,59 +1,5 @@
 
-#include <immintrin.h>
-#include <memory.h>
-#include <stdbool.h>
-#include <stdint.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <sys/syscall.h>
-#include <unistd.h>
-
-#define DEFINE_MATRIX(name, r, c)                      \
-    typedef struct name {                              \
-        union {                                        \
-            float fp32s[(r) * (c)];                    \
-            struct {                                   \
-                float cols[(c)];                       \
-            } rows[(r)];                               \
-        };                                             \
-    } name;                                            \
-                                                       \
-    void print_##name(const name *mat) {               \
-        for (int i = 0; i < (r); ++i) {                \
-            for (int j = 0; j < (c); ++j) {            \
-                printf("%f ", (mat->rows[i].cols[j])); \
-            }                                          \
-            printf("\n");                              \
-        }                                              \
-    }
-
-#define MATRIX_ROWS 32
-#define MATRIX_COLS 32
-
-DEFINE_MATRIX(Matrix, MATRIX_ROWS, MATRIX_COLS)
-
-#define FILTER_SIZE 3
-#define FILTER_OFFSET ((FILTER_SIZE - 1) / 2)
-
-DEFINE_MATRIX(Filter3x3, FILTER_SIZE, FILTER_SIZE)
-
-// -----------------------------------------------
-
-void convolution_naive(Matrix *output, const Matrix *input, const Filter3x3 *filter) {
-    for (int r = 0; r < MATRIX_ROWS - FILTER_OFFSET * 2; ++r) {
-        for (int c = 0; c < MATRIX_COLS - FILTER_OFFSET * 2; ++c) {
-            float sum = 0;
-            for (int fr = 0; fr < FILTER_SIZE; ++fr) {
-                for (int fc = 0; fc < FILTER_SIZE; ++fc) {
-                    sum += input->rows[r + fr].cols[c + fc] * filter->rows[fr].cols[fc];
-                }
-            }
-
-            output->rows[r].cols[c] = sum;
-            // output->rows[FILTER_OFFSET + r].cols[FILTER_OFFSET + c] = sum;
-        }
-    }
-}
+#include "t25_forward.h"
 
 // -----------------------------------------------
 typedef uint16_t bf16_t;
@@ -158,7 +104,7 @@ static void init_tile_config() {
     _tile_loadconfig(&tile);
 }
 
-void load_patch_filter(PatchFilterMat *patch_filter, const Filter3x3 *filter) {
+void load_patch_filter(PatchFilterMat *patch_filter, const filter3x3_t *filter) {
     for (int r = 0; r < FILTER_SIZE; ++r) {
         for (int c = 0; c < FILTER_SIZE; ++c) {
             const int index = r * FILTER_SIZE + c;
@@ -169,7 +115,7 @@ void load_patch_filter(PatchFilterMat *patch_filter, const Filter3x3 *filter) {
     _tile_loadd(PATCH_FILTER_REG_3, patch_filter->bf16s, PATCH_FILTER_COLS * sizeof(bf16_t));
 }
 
-void load_patch_input(PatchInputMat *patch_input, const Matrix *input, int patchRaw, int col16) {
+void load_patch_input(PatchInputMat *patch_input, const input_matrix_t *input, int patchRaw, int col16) {
     for (int pr = 0; pr < PATCH_INPUT_ROWS; ++pr) {
         for (int pc = 0; pc < PATCH_INPUT_COLS; ++pc) {
             if (pc >= FILTER_SIZE * FILTER_SIZE) {
@@ -194,7 +140,7 @@ void load_patch_input(PatchInputMat *patch_input, const Matrix *input, int patch
     _tile_loadd(PATCH_INPUT_REG_2, patch_input->bf16s, PATCH_INPUT_COLS * sizeof(bf16_t));
 }
 
-static void store_patch_output(Matrix *output, int patchRaw, int col16) {
+static void store_patch_output(input_matrix_t *output, int patchRaw, int col16) {
     _tile_stored(PATCH_OUTPUT_REG_1,
                  output->fp32s + col16 * PATCH_STRIDE_16 + (patchRaw) * MATRIX_COLS,
                  PATCH_OUTPUT_COLS * sizeof(fp32_t));
@@ -214,7 +160,7 @@ static void print_patch_input() {
     //        printf("\n");
 }
 
-void convolution_amx(Matrix *output, const Matrix *input, const Filter3x3 *filter) {
+void convolution_amx(input_matrix_t *output, const input_matrix_t *input, const filter3x3_t *filter) {
     PatchInputMat patch_input;
     PatchFilterMat patch_filter;
     PatchOutputMat patch_output;
@@ -239,21 +185,21 @@ void convolution_amx(Matrix *output, const Matrix *input, const Filter3x3 *filte
 // -----------------------------------------------
 
 int main() {
-    Matrix input;
+    input_matrix_t input;
     for (int r = 0; r < MATRIX_ROWS; ++r) {
         for (int c = 0; c < MATRIX_COLS; ++c) {
             input.rows[r].cols[c] = (float) (r * MATRIX_COLS + c);
         }
     }
 
-    Matrix output;
+    input_matrix_t output;
     for (int r = 0; r < MATRIX_ROWS; ++r) {
         for (int c = 0; c < MATRIX_COLS; ++c) {
             output.rows[r].cols[c] = 0.0f;
         }
     }
 
-    Filter3x3 f;
+    filter3x3_t f;
     for (int r = 0; r < FILTER_SIZE; ++r) {
         for (int c = 0; c < FILTER_SIZE; ++c) {
             f.rows[r].cols[c] = (float) ((r + c) % 2);
@@ -276,5 +222,5 @@ int main() {
 
     // -----------------------------------------------
 
-    print_Matrix(&output);
+    print_input_matrix_t(&output);
 }
