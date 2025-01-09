@@ -3,7 +3,7 @@
 
 // -----------------------------------------------
 
-void convolution_naive(input_matrix_t *output, const input_matrix_t *input, const filter3x3_t *filter) {
+void convolution_naive(matrix_t *output, const matrix_t *input, const filter3x3_t *filter) {
     for (int r = 0; r < MATRIX_ROWS - FILTER_OFFSET * 2; ++r) {
         for (int c = 0; c < MATRIX_COLS - FILTER_OFFSET * 2; ++c) {
             float sum = 0;
@@ -22,14 +22,14 @@ void convolution_naive(input_matrix_t *output, const input_matrix_t *input, cons
 // -----------------------------------------------
 
 int main() {
-    input_matrix_t input;
+    matrix_t input;
     for (int r = 0; r < MATRIX_ROWS; ++r) {
         for (int c = 0; c < MATRIX_COLS; ++c) {
             input.rows[r].cols[c] = (float) (r * MATRIX_COLS + c);
         }
     }
 
-    input_matrix_t output;
+    matrix_t output;
     for (int r = 0; r < MATRIX_ROWS; ++r) {
         for (int c = 0; c < MATRIX_COLS; ++c) {
             output.rows[r].cols[c] = 0.0f;
@@ -53,5 +53,6 @@ int main() {
 
     // -----------------------------------------------
 
-    print_input_matrix_t(&output);
+    // print_matrix_t(&output);
+    fprint_matrix_t_to_file("out/t25_naive_output.txt", &output);
 }

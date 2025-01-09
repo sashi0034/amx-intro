@@ -115,7 +115,7 @@ void load_patch_filter(PatchFilterMat *patch_filter, const filter3x3_t *filter) 
     _tile_loadd(PATCH_FILTER_REG_3, patch_filter->bf16s, PATCH_FILTER_COLS * sizeof(bf16_t));
 }
 
-void load_patch_input(PatchInputMat *patch_input, const input_matrix_t *input, int patchRaw, int col16) {
+void load_patch_input(PatchInputMat *patch_input, const matrix_t *input, int patchRaw, int col16) {
     for (int pr = 0; pr < PATCH_INPUT_ROWS; ++pr) {
         for (int pc = 0; pc < PATCH_INPUT_COLS; ++pc) {
             if (pc >= FILTER_SIZE * FILTER_SIZE) {
@@ -140,7 +140,7 @@ void load_patch_input(PatchInputMat *patch_input, const input_matrix_t *input, i
     _tile_loadd(PATCH_INPUT_REG_2, patch_input->bf16s, PATCH_INPUT_COLS * sizeof(bf16_t));
 }
 
-static void store_patch_output(input_matrix_t *output, int patchRaw, int col16) {
+static void store_patch_output(matrix_t *output, int patchRaw, int col16) {
     _tile_stored(PATCH_OUTPUT_REG_1,
                  output->fp32s + col16 * PATCH_STRIDE_16 + (patchRaw) * MATRIX_COLS,
                  PATCH_OUTPUT_COLS * sizeof(fp32_t));
@@ -160,7 +160,7 @@ static void print_patch_input() {
     //        printf("\n");
 }
 
-void convolution_amx(input_matrix_t *output, const input_matrix_t *input, const filter3x3_t *filter) {
+void convolution_amx(matrix_t *output, const matrix_t *input, const filter3x3_t *filter) {
     PatchInputMat patch_input;
     PatchFilterMat patch_filter;
     PatchOutputMat patch_output;
@@ -185,14 +185,14 @@ void convolution_amx(input_matrix_t *output, const input_matrix_t *input, const 
 // -----------------------------------------------
 
 int main() {
-    input_matrix_t input;
+    matrix_t input;
     for (int r = 0; r < MATRIX_ROWS; ++r) {
         for (int c = 0; c < MATRIX_COLS; ++c) {
             input.rows[r].cols[c] = (float) (r * MATRIX_COLS + c);
         }
     }
 
-    input_matrix_t output;
+    matrix_t output;
     for (int r = 0; r < MATRIX_ROWS; ++r) {
         for (int c = 0; c < MATRIX_COLS; ++c) {
             output.rows[r].cols[c] = 0.0f;
@@ -222,5 +222,7 @@ int main() {
 
     // -----------------------------------------------
 
-    print_input_matrix_t(&output);
+    // print_matrix_t(&output);
+    fprint_matrix_t_to_file("out/t25_amx_output.txt", &output);
+
 }
