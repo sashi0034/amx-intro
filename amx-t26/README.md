@@ -23,6 +23,12 @@ module load intel-vtune && \
 tssrun -p gr10034a --rsc m=1G vtune -collect hotspots -r=./results/result_amx build/t26_amx
 ```
 
+```
+-xCOMMON-AVX512
+-xCORE-AVX2
+-xSSE4.2
+```
+
 - Naive
 ```sh
 icc -g -O3 t26_naive.c -o build/t26_naive && \
