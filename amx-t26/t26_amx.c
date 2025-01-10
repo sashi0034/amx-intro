@@ -69,19 +69,22 @@ void convolution_amx(output_mat_t *restrict output, const input_mat_t *restrict 
     static path_input_t patch_input;
     static path_output_t patch_output;
 
-    // memset(&patch_output, 0, sizeof(PatchOutputMat));
-
     for (int patch_raw = 0; patch_raw < INPUT_ROWS - FILTER_OFFSET * 2; ++patch_raw) {
         for (int col16 = 0; col16 < INPUT_COLS / PATCH_STRIDE_16; ++col16) {
             _tile_zero(0);
 
+            // -----------------------------------------------
+
             const int pr_end = min(INPUT_ROWS - FILTER_OFFSET * 2 - col16 * PATCH_STRIDE_16, PATCH_INPUT_ROWS);
             for (int pr = 0; pr < pr_end; ++pr) {
-                for (int pc = 0; pc < FILTER_SIZE * FILTER_SIZE; ++pc) {
-                    const int offset_r = patch_raw + (pc / FILTER_SIZE);
-                    const int offset_c = col16 * PATCH_STRIDE_16 + pr + (pc % FILTER_SIZE);
+                const int offset_c = col16 * PATCH_STRIDE_16 + pr;
 
-                    patch_input.rows[pr].cols[pc] = input->rows[offset_r].cols[offset_c];
+#pragma unroll(FILTER_SIZE)
+                for (int pc = 0; pc < FILTER_SIZE; ++pc) {
+                    const int offset_r = patch_raw + (pc);
+                    memcpy(&patch_input.rows[pr].cols[pc * FILTER_SIZE],
+                           &input->rows[offset_r].cols[offset_c],
+                           FILTER_SIZE * sizeof(uint8_t));
                 }
             }
 
