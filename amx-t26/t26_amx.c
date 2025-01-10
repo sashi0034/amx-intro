@@ -53,6 +53,7 @@ static void init_tile_config() {
 
 void load_patch_filter(const filter7x7_t *filter) {
     path_filter_t patch_filter;
+    memccpy(&patch_filter, filter, sizeof(filter7x7_t), 0);
 
     for (int r = 0; r < FILTER_SIZE; ++r) {
         for (int c = 0; c < FILTER_SIZE; ++c) {
@@ -140,11 +141,12 @@ int main() {
     load_patch_filter(&f);
 
     for (int i = 0; i < CONVOLUTION_COUNT; i++) {
+        load_patch_filter(&f);
         memset(&output, 0, sizeof(output_mat_t));
 
         convolution_amx(&output, &input);
 
-        f.bytes[0] = (int8_t) (output.rows[0].cols[0]);
+        input.bytes[0] = (int8_t) (output.rows[0].cols[0]);
     }
 
     _tile_release();

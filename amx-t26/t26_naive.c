@@ -44,7 +44,7 @@ int main() {
 
         convolution_naive(&output, &input, &f);
 
-        f.bytes[0] = (int8_t) (output.rows[0].cols[0]);
+        input.bytes[0] = (int8_t) (output.rows[0].cols[0]);
     }
 
     // -----------------------------------------------
