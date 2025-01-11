@@ -3,6 +3,8 @@
 
 #define min(a, b) ((a) < (b) ? (a) : (b))
 
+#define TRACE() printf("[%s:%d] ", __FILE__, __LINE__); fflush(stdout);
+
 // -----------------------------------------------
 // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#!=undefined&techs=AMX
 typedef struct { // __tile_config
@@ -11,7 +13,7 @@ typedef struct { // __tile_config
     uint8_t reserved_0[14];
     uint16_t colsb[16];
     uint8_t rows[16];
-} TileConfig;
+} tile_config_t;
 
 #define ARCH_GET_XCOMP_PERM 0x1022
 #define ARCH_REQ_XCOMP_PERM 0x1023
@@ -39,18 +41,20 @@ _Static_assert(PACKED_FILTER_COLS <= 64, "AMX tile rows must be <= 64");
 DEFINE_BYTE_MATRIX(packed_filter_t, PACKED_FILTER_ROWS, PACKED_FILTER_COLS) // 13x64
 
 static void init_tile_config() {
-    TileConfig tile = {0};
+    tile_config_t tile = {0};
     tile.palette_id = 1;
     tile.start_row = 0;
 
-    tile.colsb[0] = 1 * sizeof(int32_t);
-    tile.rows[0] = FILTER_CH;
+    tile.colsb[0] = FILTER_CH * sizeof(int32_t);
+    tile.rows[0] = 1;
 
     tile.colsb[1] = PACKED_FILTER_COLS * sizeof(int8_t);
     tile.rows[1] = PACKED_FILTER_ROWS;
 
     tile.colsb[2] = PACKED_ELEMS * sizeof(int8_t);
     tile.rows[2] = 1;
+
+    // for (int i = 0; i < 8; i++) printf("tile[%d] = [rows: %d, colsb: %d]\n", i, tile.rows[i], tile.colsb[i]);
 
     _tile_loadconfig(&tile);
 }
@@ -70,7 +74,7 @@ void load_patch_filter(const filter7x7_t *filter) {
         }
     }
 
-    _tile_loadd(1, packed_filter.bytes, PACKED_FILTER_COLS * sizeof(uint8_t));
+    _tile_loadd(1, packed_filter.bytes, PACKED_FILTER_COLS * sizeof(int8_t));
 }
 
 void convolution_amx(output_mat_t *restrict output, const input_mat_t *restrict input) {
@@ -78,11 +82,11 @@ void convolution_amx(output_mat_t *restrict output, const input_mat_t *restrict 
         for (int c = 0; c < OUTPUT_COLS; ++c) {
             _tile_zero(0);
 
-            _tile_loadd(2, &input->rows[r].cols[c], INPUT_COLS * sizeof(uint8_t));
+            _tile_loadd(2, &input->rows[r].cols[c], INPUT_COLS * sizeof(int8_t));
 
-            _tile_dpbssd(0, 1, 2);
+            _tile_dpbssd(0, 2, 1);
 
-            _tile_stored(0, &output->rows[r].cols[c], sizeof(int32_t));
+            _tile_stored(0, &output->rows[r].cols[c], sizeof(int32_t)); // FIXME: stride
 
             _tile_stored(0,
                          &output->rows[r].cols[c],
