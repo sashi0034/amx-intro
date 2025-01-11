@@ -30,7 +30,7 @@ typedef struct { // __tile_config
 #define PATCH_OUTPUT_ROWS PATCH_INPUT_ROWS
 #define PATCH_OUTPUT_COLS 1
 
-#define PACKED_ELEMS ((FILTER_SIZE) + (4 - FILTER_SIZE % 4)) // 8 (= 7 + 1)
+#define PACKED_ELEMS ((FILTER_SIZE * INPUT_CH) + (4 - (FILTER_SIZE * INPUT_CH) % 4)) // 64 (= 9 * 7 + 1)
 
 #define PACKED_FILTER_ROWS (PACKED_ELEMS / 4)
 _Static_assert(PACKED_FILTER_ROWS <= 16, "AMX tile rows must be <= 16");
@@ -59,16 +59,19 @@ static void init_tile_config() {
     _tile_loadconfig(&tile);
 }
 
-void store_packed_filter(packed_filter_t packed_filter[FILTER_SIZE], const filter7x7_t *filter) {
+void store_packed_filter(packed_filter_t packed_filter[FILTER_SIZE], const filter7x7_t filter[INPUT_CH]) {
     memset(packed_filter, 0, sizeof(packed_filter_t) * FILTER_SIZE);
 
     for (int r = 0; r < FILTER_SIZE; ++r) {
         for (int c = 0; c < FILTER_SIZE; ++c) {
             for (int n = 0; n < FILTER_CH; ++n) {
-                const int c2 = n;
-                const int r2 = c;
+                for (int ich = 0; ich < INPUT_CH; ++ich) {
 
-                packed_filter[r].rows[r2 / 4].cols[c2 * 4 + r2 % 4] = (filter->rows[r].cols[c].ch[n]);
+                    const int c2 = n;
+                    const int r2 = c * INPUT_CH + ich;
+
+                    packed_filter[r].rows[r2 / 4].cols[c2 * 4 + r2 % 4] = (filter[ich].rows[r].cols[c].ch[n]);
+                }
             }
         }
     }
@@ -109,18 +112,14 @@ static bool syscall_for_amx() {
 
 int main() {
     input_mat_t input;
-    for (int r = 0; r < INPUT_ROWS; ++r) {
-        for (int c = 0; c < INPUT_COLS; ++c) {
-            input.rows[r].cols[c] = (int8_t) (((r * INPUT_COLS + c) % 256) - 128);
-        }
-    }
+    init_input_mat(&input);
 
     // fprint_input_mat_t_to_file("out/a.txt", &input);
 
     output_mat_t output;
 
-    filter7x7_t f;
-    init_filter(&f);
+    filter7x7_t f[INPUT_CH];
+    init_filter(f);
 
     // -----------------------------------------------
 
@@ -128,14 +127,14 @@ int main() {
     init_tile_config();
 
     packed_filter_t packed_filter[FILTER_SIZE];
-    store_packed_filter(packed_filter, &f);
+    store_packed_filter(packed_filter, f);
 
     for (int i = 0; i < CONVOLUTION_COUNT; i++) {
         memset(&output, 0, sizeof(output_mat_t));
 
         convolution_amx(&output, &input, packed_filter);
 
-        for (int j = 0; j < FILTER_CH; ++j) input.bytes[0] += (int8_t) (output.rows[0].cols[0].ch[j]);
+        for (int j = 0; j < FILTER_CH; ++j) input.bytes[j % INPUT_CH] += (int8_t) (output.rows[0].cols[0].ch[j]);
     }
 
     _tile_release();

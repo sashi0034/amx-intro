@@ -114,7 +114,19 @@
 #define INPUT_ROWS 192
 #define INPUT_COLS 192
 
-DEFINE_BYTE_MATRIX(input_mat_t, INPUT_ROWS, INPUT_COLS)
+#define INPUT_CH 9
+
+DEFINE_BYTE_MATRIX_N(input_mat_t, INPUT_ROWS, INPUT_COLS, INPUT_CH)
+
+static void init_input_mat(input_mat_t *mat) {
+    for (int i = 0; i < INPUT_ROWS; ++i) {
+        for (int j = 0; j < INPUT_COLS; ++j) {
+            for (int n = 0; n < INPUT_CH; ++n) {
+                mat->rows[i].cols[j].ch[n] = (int8_t) (i + j + n);
+            }
+        }
+    }
+}
 
 #define FILTER_SIZE 7
 #define FILTER_OFFSET ((FILTER_SIZE - 1) / 2)
@@ -125,11 +137,13 @@ DEFINE_BYTE_MATRIX_N(filter7x7_t, FILTER_SIZE, FILTER_SIZE, FILTER_CH)
 
 _Static_assert(sizeof(filter7x7_t) == FILTER_SIZE * FILTER_SIZE * FILTER_CH, "Invalid filter size");
 
-static void init_filter(filter7x7_t *filter) {
-    for (int i = 0; i < FILTER_SIZE; ++i) {
-        for (int j = 0; j < FILTER_SIZE; ++j) {
-            for (int n = 0; n < FILTER_CH; ++n) {
-                filter->rows[i].cols[j].ch[n] = (int8_t) (i + j - n);
+static void init_filter(filter7x7_t filter[INPUT_CH]) {
+    for (int f = 0; f < INPUT_CH; ++f) {
+        for (int i = 0; i < FILTER_SIZE; ++i) {
+            for (int j = 0; j < FILTER_SIZE; ++j) {
+                for (int n = 0; n < FILTER_CH; ++n) {
+                    filter[f].rows[i].cols[j].ch[n] = (int8_t) (f + i + j - n);
+                }
             }
         }
     }
@@ -142,4 +156,4 @@ DEFINE_DWORD_MATRIX_N(output_mat_t, OUTPUT_ROWS, OUTPUT_COLS, FILTER_CH)
 
 _Static_assert(sizeof(output_mat_t) == OUTPUT_ROWS * OUTPUT_COLS * FILTER_CH * sizeof(int32_t), "Invalid output size");
 
-#define CONVOLUTION_COUNT 1
+#define CONVOLUTION_COUNT 1000
