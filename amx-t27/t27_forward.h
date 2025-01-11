@@ -91,7 +91,7 @@ DEFINE_BYTE_MATRIX(input_mat_t, INPUT_ROWS, INPUT_COLS)
 #define FILTER_SIZE 7
 #define FILTER_OFFSET ((FILTER_SIZE - 1) / 2)
 
-#define FILTER_CH 16
+#define FILTER_CH 16 // equals to the number of output channels
 
 DEFINE_BYTE_MATRIX_N(filter7x7_t, FILTER_SIZE, FILTER_SIZE, FILTER_CH)
 

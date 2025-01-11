@@ -28,81 +28,65 @@ typedef struct { // __tile_config
 #define PATCH_OUTPUT_ROWS PATCH_INPUT_ROWS
 #define PATCH_OUTPUT_COLS 1
 
-DEFINE_BYTE_MATRIX(path_input_t, PATCH_INPUT_ROWS, PATCH_INPUT_COLS) // 16x52
+#define PACKED_ELEMS ((FILTER_SIZE * FILTER_SIZE) + (4 - FILTER_SIZE * FILTER_SIZE % 4)) // 52 (= 49 + 3)
 
-DEFINE_BYTE_MATRIX(path_filter_t, PATCH_FILTER_ROWS, PATCH_FILTER_COLS) // 13x4
+#define PACKED_FILTER_ROWS (PACKED_ELEMS / 4)
+_Static_assert(PACKED_FILTER_ROWS <= 16, "AMX tile rows must be <= 16");
 
-DEFINE_DWORD_MATRIX(path_output_t, PATCH_OUTPUT_ROWS, PATCH_OUTPUT_COLS) // 16x1
+#define PACKED_FILTER_COLS (FILTER_CH * 4)
+_Static_assert(PACKED_FILTER_COLS <= 64, "AMX tile rows must be <= 64");
+
+DEFINE_BYTE_MATRIX(packed_filter_t, PACKED_FILTER_ROWS, PACKED_FILTER_COLS) // 13x64
 
 static void init_tile_config() {
     TileConfig tile = {0};
     tile.palette_id = 1;
     tile.start_row = 0;
 
-    tile.colsb[0] = PATCH_OUTPUT_COLS * sizeof(int32_t);
-    tile.rows[0] = PATCH_OUTPUT_ROWS;
+    tile.colsb[0] = 1 * sizeof(int32_t);
+    tile.rows[0] = FILTER_CH;
 
-    tile.colsb[2] = PATCH_INPUT_COLS * sizeof(int8_t);
-    tile.rows[2] = PATCH_INPUT_ROWS;
+    tile.colsb[1] = PACKED_FILTER_COLS * sizeof(int8_t);
+    tile.rows[1] = PACKED_FILTER_ROWS;
 
-    tile.colsb[3] = PATCH_FILTER_COLS * sizeof(int8_t);
-    tile.rows[3] = PATCH_FILTER_ROWS;
+    tile.colsb[2] = PACKED_ELEMS * sizeof(int8_t);
+    tile.rows[2] = 1;
 
     _tile_loadconfig(&tile);
 }
 
 void load_patch_filter(const filter7x7_t *filter) {
-    path_filter_t patch_filter;
-    memccpy(&patch_filter, filter, sizeof(filter7x7_t), 0);
+    packed_filter_t packed_filter;
+    memccpy(&packed_filter, filter, sizeof(filter7x7_t), 0);
 
     for (int r = 0; r < FILTER_SIZE; ++r) {
         for (int c = 0; c < FILTER_SIZE; ++c) {
-            const int index = r * FILTER_SIZE + c;
-            patch_filter.rows[index / 4].cols[index % 4] = (filter->rows[r].cols[c]);
+            for (int n = 0; n < FILTER_CH; ++n) {
+                const int c2 = n;
+                const int r2 = r * FILTER_SIZE + c;
+
+                packed_filter.rows[r2 / 4].cols[c2 * 4 + r2 % 4] = (filter->rows[r].cols[c].ch[n]);
+            }
         }
     }
 
-    _tile_loadd(3, patch_filter.bytes, PATCH_FILTER_COLS * sizeof(uint8_t));
+    _tile_loadd(1, packed_filter.bytes, PACKED_FILTER_COLS * sizeof(uint8_t));
 }
 
 void convolution_amx(output_mat_t *restrict output, const input_mat_t *restrict input) {
-    static path_input_t patch_input;
-    static path_output_t patch_output;
-
-    for (int patch_raw = 0; patch_raw < INPUT_ROWS - FILTER_OFFSET * 2; ++patch_raw) {
-        for (int col16 = 0; col16 < INPUT_COLS / PATCH_STRIDE_16; ++col16) {
+    for (int r = 0; r < OUTPUT_ROWS; ++r) {
+        for (int c = 0; c < OUTPUT_COLS; ++c) {
             _tile_zero(0);
 
-            // -----------------------------------------------
+            _tile_loadd(2, &input->rows[r].cols[c], INPUT_COLS * sizeof(uint8_t));
 
-            const int pr_end = min(INPUT_ROWS - FILTER_OFFSET * 2 - col16 * PATCH_STRIDE_16, PATCH_INPUT_ROWS);
-            for (int pr = 0; pr < pr_end; ++pr) {
-                const int offset_c = col16 * PATCH_STRIDE_16 + pr;
+            _tile_dpbssd(0, 1, 2);
 
-#pragma unroll(FILTER_SIZE)
-                for (int pc = 0; pc < FILTER_SIZE; ++pc) {
-                    const int offset_r = patch_raw + (pc);
-                    memcpy(&patch_input.rows[pr].cols[pc * FILTER_SIZE],
-                           &input->rows[offset_r].cols[offset_c],
-                           FILTER_SIZE * sizeof(uint8_t));
-                }
-            }
-
-            for (int pr = pr_end; pr < PATCH_INPUT_ROWS; ++pr) {
-                for (int pc = 0; pc < PATCH_INPUT_COLS; ++pc) {
-                    patch_input.rows[pr].cols[pc] = 0;
-                }
-            }
-
-            // -----------------------------------------------
-
-            _tile_loadd(2, patch_input.bytes, PATCH_INPUT_COLS * sizeof(uint8_t));
-
-            _tile_dpbssd(0, 2, 3);
+            _tile_stored(0, &output->rows[r].cols[c], sizeof(int32_t));
 
             _tile_stored(0,
-                         output->dwords + col16 * PATCH_STRIDE_16 + patch_raw * OUTPUT_COLS,
-                         PATCH_OUTPUT_COLS * sizeof(int32_t));
+                         &output->rows[r].cols[c],
+                         1 * sizeof(int32_t));
         }
     }
 }
@@ -130,11 +114,7 @@ int main() {
     output_mat_t output;
 
     filter7x7_t f;
-    for (int r = 0; r < FILTER_SIZE; ++r) {
-        for (int c = 0; c < FILTER_SIZE; ++c) {
-            f.rows[r].cols[c] = (int8_t) ((r + c) % 2);
-        }
-    }
+    init_filter(&f);
 
     // -----------------------------------------------
 
@@ -149,7 +129,7 @@ int main() {
 
         convolution_amx(&output, &input);
 
-        input.bytes[0] = (int8_t) (output.rows[0].cols[0]);
+        for (int j = 0; j < FILTER_CH; ++j) input.bytes[0] += (int8_t) (output.rows[0].cols[0].ch[j]);
     }
 
     _tile_release();
