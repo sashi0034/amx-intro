@@ -6,14 +6,17 @@
 void convolution_naive(output_mat_t *output, const input_mat_t *input, const filter7x7_t *filter) {
     for (int r = 0; r < INPUT_ROWS - FILTER_OFFSET * 2; ++r) {
         for (int c = 0; c < INPUT_COLS - FILTER_OFFSET * 2; ++c) {
-            int32_t sum = 0;
-            for (int fr = 0; fr < FILTER_SIZE; ++fr) {
-                for (int fc = 0; fc < FILTER_SIZE; ++fc) {
-                    sum += input->rows[r + fr].cols[c + fc] * filter->rows[fr].cols[fc];
-                }
-            }
+            for (int fn = 0; fn < FILTER_CH; ++fn) {
 
-            output->rows[r].cols[c] = sum;
+                int32_t sum = 0;
+                for (int fr = 0; fr < FILTER_SIZE; ++fr) {
+                    for (int fc = 0; fc < FILTER_SIZE; ++fc) {
+                        sum += input->rows[r + fr].cols[c + fc] * filter->rows[fr].cols[fc].ch[fn];
+                    }
+                }
+
+                output->rows[r].cols[c].ch[fn] = sum;
+            }
         }
     }
 }
@@ -31,11 +34,7 @@ int main() {
     output_mat_t output;
 
     filter7x7_t f;
-    for (int r = 0; r < FILTER_SIZE; ++r) {
-        for (int c = 0; c < FILTER_SIZE; ++c) {
-            f.rows[r].cols[c] = (int8_t) ((r + c) % 2);
-        }
-    }
+    init_filter(&f);
 
     // -----------------------------------------------
 
@@ -44,7 +43,7 @@ int main() {
 
         convolution_naive(&output, &input, &f);
 
-        input.bytes[0] = (int8_t) (output.rows[0].cols[0]);
+        for (int j = 0; j < FILTER_CH; ++j) input.bytes[0] += (int8_t) (output.rows[0].cols[0].ch[j]);
     }
 
     // -----------------------------------------------
