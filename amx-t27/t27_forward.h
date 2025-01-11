@@ -14,10 +14,38 @@
             int8_t bytes[(r) * (c)]; \
             struct { \
                 int8_t cols[(c)]; \
-            } rows[(r)];          \
+            } rows[(r)]; \
             int8_t* mat[r][c]; \
         }; \
-    } name;
+    } name; \
+    \
+    static void print_##name(const name* mat) { \
+        for (int i = 0; i < (r); ++i) { \
+            for (int j = 0; j < (c); ++j) { \
+                printf("%d ", mat->rows[i].cols[j]); \
+            } \
+            printf("\n"); \
+        } \
+    } \
+    \
+    static void fprint_##name(const name* mat, FILE* stream) { \
+        for (int i = 0; i < (r); ++i) { \
+            for (int j = 0; j < (c); ++j) { \
+                fprintf(stream, "%d ", mat->rows[i].cols[j]); \
+            } \
+            fprintf(stream, "\n"); \
+        } \
+    } \
+    \
+    static void fprint_##name##_to_file(const char* filename, const name* mat) { \
+        FILE* file = fopen(filename, "w"); \
+        if (file) { \
+            fprint_##name(mat, file); \
+            fclose(file); \
+        } else { \
+            perror("Failed to open file"); \
+        } \
+    }
 
 #define DEFINE_BYTE_MATRIX_N(name, r, c, n) \
     typedef struct name { \
