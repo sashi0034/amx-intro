@@ -60,7 +60,7 @@ static void init_tile_config() {
 }
 
 void store_packed_filter(packed_filter_t packed_filter[FILTER_SIZE], const filter7x7_t *filter) {
-    memset(packed_filter, 0, sizeof(filter7x7_t) * FILTER_SIZE);
+    memset(packed_filter, 0, sizeof(packed_filter_t) * FILTER_SIZE);
 
     for (int r = 0; r < FILTER_SIZE; ++r) {
         for (int c = 0; c < FILTER_SIZE; ++c) {
