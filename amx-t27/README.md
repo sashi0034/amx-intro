@@ -33,5 +33,5 @@ tssrun -p gr10034a --rsc m=1G vtune -collect hotspots -r=./results/result_amx bu
 ```sh
 icc -g -O3 t27_naive.c -xCOMMON-AVX512 -o build/t27_naive && \
 module load intel-vtune && \
-tssrun -p gr10034a --rsc m=50G vtune -collect hotspots -r=./results/result_naive build/t27_naive
+tssrun -p gr10034a --rsc m=1G vtune -collect hotspots -r=./results/result_naive build/t27_naive
 ```
