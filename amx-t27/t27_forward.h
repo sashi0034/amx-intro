@@ -128,8 +128,8 @@ _Static_assert(sizeof(filter7x7_t) == FILTER_SIZE * FILTER_SIZE * FILTER_CH, "In
 static void init_filter(filter7x7_t *filter) {
     for (int i = 0; i < FILTER_SIZE; ++i) {
         for (int j = 0; j < FILTER_SIZE; ++j) {
-            for (int k = 0; k < FILTER_CH; ++k) {
-                filter->rows[i].cols[j].ch[k] = (int8_t) (i + j - FILTER_CH);
+            for (int n = 0; n < FILTER_CH; ++n) {
+                filter->rows[i].cols[j].ch[n] = (int8_t) (i + j - n);
             }
         }
     }
