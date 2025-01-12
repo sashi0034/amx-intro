@@ -49,10 +49,10 @@ def find_latest_result_dir(base_name):
         raise FileNotFoundError(f"No result directory found matching {base_name}")
 
 
-def run_vtune_profile(label, compile):
+def run_vtune_profile(label, compile_cmd):
     build = f"build/t20_{label}"
     run_command(
-        compile + f" -o {build} && "
+        compile_cmd + f" -o {build} && "
                   f"module load intel-vtune && "
                   f"tssrun -p gr10034a --rsc m=50G vtune -collect hotspots -r=./results/result_{label}_{cases} {build}")
     result_dir = find_latest_result_dir(f"./results/result_{label}_{cases}")
