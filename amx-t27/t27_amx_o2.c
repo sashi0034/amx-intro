@@ -41,11 +41,11 @@ static void init_tile_config() {
     tile.palette_id = 1;
     tile.start_row = 0;
 
-    tile.colsb[0] = FILTER_CH * sizeof(int32_t);
-    tile.rows[0] = 1;
+    tile.colsb[0] = PACKED_FILTER_COLS * sizeof(int8_t);
+    tile.rows[0] = PACKED_FILTER_ROWS;
 
-    tile.colsb[1] = PACKED_FILTER_COLS * sizeof(int8_t);
-    tile.rows[1] = PACKED_FILTER_ROWS;
+    tile.colsb[1] = FILTER_CH * sizeof(int32_t);
+    tile.rows[1] = 1;
 
     tile.colsb[2] = PACKED_ELEMS * sizeof(int8_t);
     tile.rows[2] = 1;
@@ -77,7 +77,6 @@ void store_packed_filter(packed_filter_t packed_filter[FILTER_SIZE], const filte
             }
         }
     }
-    // _tile_loadd(1, packed_filter.bytes, PACKED_FILTER_COLS * sizeof(int8_t));
 }
 
 void convolution_amx(
@@ -86,20 +85,20 @@ void convolution_amx(
         const packed_filter_t packed_filter[FILTER_SIZE]) {
     for (int r = 0; r < OUTPUT_ROWS - FILTER_OFFSET * 2; ++r) {
         for (int c = 0; c < OUTPUT_COLS - FILTER_OFFSET * 2; c += 2) {
-            _tile_zero(0);
+            _tile_zero(1);
             _tile_zero(3);
 
             for (int acc = 0; acc < FILTER_SIZE; ++acc) {
-                _tile_loadd(1, packed_filter[acc].bytes, PACKED_FILTER_COLS * sizeof(int8_t));
+                _tile_loadd(0, packed_filter[acc].bytes, PACKED_FILTER_COLS * sizeof(int8_t));
 
                 _tile_stream_loadd(2, &input->rows[r + acc].cols[c], INPUT_COLS * sizeof(int8_t)); // FIXME: stride
-                _tile_dpbssd(0, 2, 1);
+                _tile_dpbssd(1, 2, 0);
 
                 _tile_stream_loadd(4, &input->rows[r + acc].cols[c + 1], INPUT_COLS * sizeof(int8_t)); // FIXME: stride
-                _tile_dpbssd(3, 4, 1);
+                _tile_dpbssd(3, 4, 0);
             }
 
-            _tile_stored(0, &output->rows[r].cols[c], sizeof(int32_t)); // FIXME: stride
+            _tile_stored(1, &output->rows[r].cols[c], sizeof(int32_t)); // FIXME: stride
             _tile_stored(3, &output->rows[r].cols[c + 1], sizeof(int32_t)); // FIXME: stride
         }
     }
@@ -148,5 +147,5 @@ int main() {
 
     // -----------------------------------------------
 
-    fprint_output_mat_t_to_file("out/t26_amx_output.txt", &output);
+    fprint_output_mat_t_to_file("out/t26_amx_o2_output.txt", &output);
 }
