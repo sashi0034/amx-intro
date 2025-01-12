@@ -92,51 +92,70 @@ void convolution_amx(
         const input_mat_t *restrict input,
         const packed_filter_t packed_filter[FILTER_SIZE]) {
     for (int r = 0; r < OUTPUT_ROWS - FILTER_OFFSET * 2; ++r) {
-        for (int c = 0; c < OUTPUT_COLS - FILTER_OFFSET * 2 - AMX_ROWS_16 * 3; c += AMX_ROWS_16 * 3) {
-            _tile_zero(1);
-            _tile_zero(3);
-            _tile_zero(5);
+        for (int c = 0; c < OUTPUT_COLS - FILTER_OFFSET * 2 - AMX_ROWS_16; c += AMX_ROWS_16 * 3) {
+            if (c > OUTPUT_COLS - FILTER_OFFSET * 2 - AMX_ROWS_16 * 2) {
+                _tile_zero(1);
 
-            for (int acc = 0; acc < FILTER_SIZE; ++acc) {
-                _tile_loadd(0, packed_filter[acc].bytes, PACKED_FILTER_COLS * sizeof(int8_t));
+                for (int acc = 0; acc < FILTER_SIZE; ++acc) {
+                    _tile_loadd(0, packed_filter[acc].bytes, PACKED_FILTER_COLS * sizeof(int8_t));
 
-                _tile_stream_loadd(2, &input->rows[r + acc].cols[c], INPUT_CH * sizeof(int8_t));
-                _tile_dpbssd(1, 2, 0);
+                    _tile_loadd(2, &input->rows[r + acc].cols[c], INPUT_CH * sizeof(int8_t));
+                    _tile_dpbssd(1, 2, 0);
+                }
 
-                _tile_stream_loadd(4, &input->rows[r + acc].cols[c + AMX_ROWS_16], INPUT_CH * sizeof(int8_t));
-                _tile_dpbssd(3, 4, 0);
+                _tile_stored(1, &output->rows[r].cols[c], FILTER_CH * sizeof(int32_t));
+            } else if (c > OUTPUT_COLS - FILTER_OFFSET * 2 - AMX_ROWS_16 * 3) {
+                _tile_zero(1);
+                _tile_zero(3);
 
-                _tile_stream_loadd(5, &input->rows[r + acc].cols[c + AMX_ROWS_16 * 2], INPUT_CH * sizeof(int8_t));
-                _tile_dpbssd(5, 6, 0);
+                for (int acc = 0; acc < FILTER_SIZE; ++acc) {
+                    _tile_loadd(0, packed_filter[acc].bytes, PACKED_FILTER_COLS * sizeof(int8_t));
+
+                    _tile_stream_loadd(2, &input->rows[r + acc].cols[c], INPUT_CH * sizeof(int8_t));
+                    _tile_dpbssd(1, 2, 0);
+
+                    _tile_stream_loadd(4, &input->rows[r + acc].cols[c + AMX_ROWS_16], INPUT_CH * sizeof(int8_t));
+                    _tile_dpbssd(3, 4, 0);
+                }
+
+                _tile_stored(1, &output->rows[r].cols[c], FILTER_CH * sizeof(int32_t));
+                _tile_stored(3, &output->rows[r].cols[c + AMX_ROWS_16], FILTER_CH * sizeof(int32_t));
+            } else {
+                _tile_zero(1);
+                _tile_zero(3);
+                _tile_zero(5);
+
+                for (int acc = 0; acc < FILTER_SIZE; ++acc) {
+                    _tile_loadd(0, packed_filter[acc].bytes, PACKED_FILTER_COLS * sizeof(int8_t));
+
+                    _tile_stream_loadd(2, &input->rows[r + acc].cols[c], INPUT_CH * sizeof(int8_t));
+                    _tile_dpbssd(1, 2, 0);
+
+                    _tile_stream_loadd(4, &input->rows[r + acc].cols[c + AMX_ROWS_16], INPUT_CH * sizeof(int8_t));
+                    _tile_dpbssd(3, 4, 0);
+
+                    _tile_stream_loadd(5, &input->rows[r + acc].cols[c + AMX_ROWS_16 * 2], INPUT_CH * sizeof(int8_t));
+                    _tile_dpbssd(5, 6, 0);
+                }
+
+                _tile_stored(1, &output->rows[r].cols[c], FILTER_CH * sizeof(int32_t));
+                _tile_stored(3, &output->rows[r].cols[c + AMX_ROWS_16], FILTER_CH * sizeof(int32_t));
+                _tile_stored(5, &output->rows[r].cols[c + AMX_ROWS_16 * 2], FILTER_CH * sizeof(int32_t));
             }
-
-            _tile_stored(1, &output->rows[r].cols[c], FILTER_CH * sizeof(int32_t));
-            _tile_stored(3, &output->rows[r].cols[c + AMX_ROWS_16], FILTER_CH * sizeof(int32_t));
-            _tile_stored(5, &output->rows[r].cols[c + AMX_ROWS_16 * 2], FILTER_CH * sizeof(int32_t));
         }
 
         {
-            const int c = OUTPUT_COLS - FILTER_OFFSET * 2 - AMX_ROWS_16 * 3;
+            const int c = OUTPUT_COLS - FILTER_OFFSET * 2 - AMX_ROWS_16;
             _tile_zero(1);
-            _tile_zero(3);
-            _tile_zero(5);
 
             for (int acc = 0; acc < FILTER_SIZE; ++acc) {
                 _tile_loadd(0, packed_filter[acc].bytes, PACKED_FILTER_COLS * sizeof(int8_t));
+                _tile_loadd(2, &input->rows[r + acc].cols[c], INPUT_CH * sizeof(int8_t));
 
-                _tile_stream_loadd(2, &input->rows[r + acc].cols[c], INPUT_CH * sizeof(int8_t));
                 _tile_dpbssd(1, 2, 0);
-
-                _tile_stream_loadd(4, &input->rows[r + acc].cols[c + AMX_ROWS_16], INPUT_CH * sizeof(int8_t));
-                _tile_dpbssd(3, 4, 0);
-
-                _tile_stream_loadd(5, &input->rows[r + acc].cols[c + AMX_ROWS_16 * 2], INPUT_CH * sizeof(int8_t));
-                _tile_dpbssd(5, 6, 0);
             }
 
             _tile_stored(1, &output->rows[r].cols[c], FILTER_CH * sizeof(int32_t));
-            _tile_stored(3, &output->rows[r].cols[c + AMX_ROWS_16], FILTER_CH * sizeof(int32_t));
-            _tile_stored(5, &output->rows[r].cols[c + AMX_ROWS_16 * 2], FILTER_CH * sizeof(int32_t));
         }
     }
 }
