@@ -8,6 +8,10 @@
 #include <sys/syscall.h>
 #include <unistd.h>
 
+#define MIN(a, b) ((a) < (b) ? (a) : (b))
+
+#define TRACE() printf("[%s:%d] ", __FILE__, __LINE__); fflush(stdout);
+
 #define DEFINE_BYTE_MATRIX(name, r, c) \
     typedef struct name { \
         union { \

@@ -1,10 +1,6 @@
 
 #include "t27_forward.h"
 
-#define min(a, b) ((a) < (b) ? (a) : (b))
-
-#define TRACE() printf("[%s:%d] ", __FILE__, __LINE__); fflush(stdout);
-
 // -----------------------------------------------
 // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#!=undefined&techs=AMX
 typedef struct { // __tile_config

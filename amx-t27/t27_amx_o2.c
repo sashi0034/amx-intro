@@ -50,6 +50,12 @@ static void init_tile_config() {
     tile.colsb[2] = PACKED_ELEMS * sizeof(int8_t);
     tile.rows[2] = 1;
 
+    tile.colsb[3] = FILTER_CH * sizeof(int32_t);
+    tile.rows[3] = 1;
+
+    tile.colsb[4] = PACKED_ELEMS * sizeof(int8_t);
+    tile.rows[4] = 1;
+
     // for (int i = 0; i < 8; i++) printf("tile[%d] = [rows: %d, colsb: %d]\n", i, tile.rows[i], tile.colsb[i]);
 
     _tile_loadconfig(&tile);
@@ -79,17 +85,22 @@ void convolution_amx(
         const input_mat_t *restrict input,
         const packed_filter_t packed_filter[FILTER_SIZE]) {
     for (int r = 0; r < OUTPUT_ROWS - FILTER_OFFSET * 2; ++r) {
-        for (int c = 0; c < OUTPUT_COLS - FILTER_OFFSET * 2; ++c) {
+        for (int c = 0; c < OUTPUT_COLS - FILTER_OFFSET * 2; c += 2) {
             _tile_zero(0);
+            _tile_zero(3);
 
             for (int acc = 0; acc < FILTER_SIZE; ++acc) {
-                _tile_loadd(2, &input->rows[r + acc].cols[c], INPUT_COLS * sizeof(int8_t)); // FIXME: stride
                 _tile_loadd(1, packed_filter[acc].bytes, PACKED_FILTER_COLS * sizeof(int8_t));
 
+                _tile_stream_loadd(2, &input->rows[r + acc].cols[c], INPUT_COLS * sizeof(int8_t)); // FIXME: stride
                 _tile_dpbssd(0, 2, 1);
+
+                _tile_stream_loadd(4, &input->rows[r + acc].cols[c + 1], INPUT_COLS * sizeof(int8_t)); // FIXME: stride
+                _tile_dpbssd(3, 4, 1);
             }
 
             _tile_stored(0, &output->rows[r].cols[c], sizeof(int32_t)); // FIXME: stride
+            _tile_stored(3, &output->rows[r].cols[c + 1], sizeof(int32_t)); // FIXME: stride
         }
     }
 }
