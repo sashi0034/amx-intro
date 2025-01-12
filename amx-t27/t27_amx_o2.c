@@ -85,7 +85,7 @@ void store_packed_filter(packed_filter_t packed_filter[FILTER_SIZE], const filte
     }
 }
 
-void convolution_amx(
+void convolution(
         output_mat_t *restrict output,
         const input_mat_t *restrict input,
         const packed_filter_t packed_filter[FILTER_SIZE]) {
@@ -179,7 +179,7 @@ int main() {
     for (int i = 0; i < CONVOLUTION_COUNT; i++) {
         memset(&output, 0, sizeof(output_mat_t));
 
-        convolution_amx(&output, &input, packed_filter);
+        convolution(&output, &input, packed_filter);
 
         for (int j = 0; j < FILTER_CH; ++j) input.bytes[j % INPUT_CH] += (int8_t) (output.rows[0].cols[0].ch[j]);
     }

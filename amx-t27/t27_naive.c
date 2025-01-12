@@ -3,7 +3,7 @@
 
 // -----------------------------------------------
 
-void convolution_naive(output_mat_t *output, const input_mat_t *input, const filter7x7_t filter[INPUT_CH]) {
+void convolution(output_mat_t *output, const input_mat_t *input, const filter7x7_t filter[INPUT_CH]) {
     for (int r = 0; r < INPUT_ROWS - FILTER_OFFSET * 2; ++r) {
         for (int c = 0; c < INPUT_COLS - FILTER_OFFSET * 2; ++c) {
             for (int fn = 0; fn < FILTER_CH; ++fn) {
@@ -39,7 +39,7 @@ int main() {
     for (int i = 0; i < CONVOLUTION_COUNT; i++) {
         memset(&output, 0, sizeof(output_mat_t));
 
-        convolution_naive(&output, &input, f);
+        convolution(&output, &input, f);
 
         for (int j = 0; j < FILTER_CH; ++j) input.bytes[j % INPUT_CH] += (int8_t) (output.rows[0].cols[0].ch[j]);
     }
