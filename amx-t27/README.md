@@ -6,6 +6,8 @@ icc -g -O3 t27_amx.c -o build/t27_amx && tssrun -p gr10034a build/t27_amx
 icc -g -O3 t27_amx_o2.c -o build/t27_amx_o2 && tssrun -p gr10034a build/t27_amx_o2
 
 icc -g -O3 t27_amx_o3.c -o build/t27_amx_o3 && tssrun -p gr10034a build/t27_amx_o3
+
+icc -g -O3 t27_amx_o4.c -o build/t27_amx_o4 && tssrun -p gr10034a build/t27_amx_o4
 ```
 
 ```sh
@@ -39,6 +41,13 @@ o3
 icc -g -O3 t27_amx_o3.c -o build/t27_amx_o3 && \
 module load intel-vtune && \
 tssrun -p gr10034a --rsc m=1G vtune -collect hotspots -r=./results/result_amx_o3 build/t27_amx_o3
+```
+
+o4
+```sh
+icc -g -O3 t27_amx_o4.c -o build/t27_amx_o4 && \
+module load intel-vtune && \
+tssrun -p gr10034a --rsc m=1G vtune -collect hotspots -r=./results/result_amx_o4 build/t27_amx_o4
 ```
 
 ```
