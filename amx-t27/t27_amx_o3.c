@@ -36,6 +36,8 @@ _Static_assert(PACKED_FILTER_COLS <= 64, "AMX tile rows must be <= 64");
 
 DEFINE_BYTE_MATRIX(packed_filter_t, PACKED_FILTER_ROWS, PACKED_FILTER_COLS)
 
+#define AMX_ROWS_16 16
+
 static void init_tile_config() {
     tile_config_t tile = {0};
     tile.palette_id = 1;
@@ -45,10 +47,10 @@ static void init_tile_config() {
     tile.rows[0] = PACKED_FILTER_ROWS;
 
     tile.colsb[1] = FILTER_CH * sizeof(int32_t);
-    tile.rows[1] = 1;
+    tile.rows[1] = AMX_ROWS_16;
 
     tile.colsb[2] = PACKED_ELEMS * sizeof(int8_t);
-    tile.rows[2] = 1;
+    tile.rows[2] = AMX_ROWS_16;
 
     // for (int i = 0; i < 8; i++) printf("tile[%d] = [rows: %d, colsb: %d]\n", i, tile.rows[i], tile.colsb[i]);
 
@@ -78,17 +80,31 @@ void convolution_amx(
         const input_mat_t *restrict input,
         const packed_filter_t packed_filter[FILTER_SIZE]) {
     for (int r = 0; r < OUTPUT_ROWS - FILTER_OFFSET * 2; ++r) {
-        for (int c = 0; c < OUTPUT_COLS - FILTER_OFFSET * 2; ++c) {
+        for (int c = 0; c < OUTPUT_COLS - FILTER_OFFSET * 2 - AMX_ROWS_16; c += AMX_ROWS_16) {
             _tile_zero(1);
 
             for (int acc = 0; acc < FILTER_SIZE; ++acc) {
                 _tile_loadd(0, packed_filter[acc].bytes, PACKED_FILTER_COLS * sizeof(int8_t));
-                _tile_loadd(2, &input->rows[r + acc].cols[c], INPUT_COLS * sizeof(int8_t)); // FIXME: stride
+                _tile_loadd(2, &input->rows[r + acc].cols[c], INPUT_CH * sizeof(int8_t));
 
                 _tile_dpbssd(1, 2, 0);
             }
 
-            _tile_stored(1, &output->rows[r].cols[c], sizeof(int32_t)); // FIXME: stride
+            _tile_stored(1, &output->rows[r].cols[c], FILTER_CH * sizeof(int32_t));
+        }
+
+        {
+            const int c = OUTPUT_COLS - FILTER_OFFSET * 2 - AMX_ROWS_16;
+            _tile_zero(1);
+
+            for (int acc = 0; acc < FILTER_SIZE; ++acc) {
+                _tile_loadd(0, packed_filter[acc].bytes, PACKED_FILTER_COLS * sizeof(int8_t));
+                _tile_loadd(2, &input->rows[r + acc].cols[c], INPUT_CH * sizeof(int8_t));
+
+                _tile_dpbssd(1, 2, 0);
+            }
+
+            _tile_stored(1, &output->rows[r].cols[c], FILTER_CH * sizeof(int32_t));
         }
     }
 }
@@ -136,5 +152,5 @@ int main() {
 
     // -----------------------------------------------
 
-    fprint_output_mat_t_to_file("out/t26_amx_output.txt", &output);
+    fprint_output_mat_t_to_file("out/t26_amx_o3_output.txt", &output);
 }

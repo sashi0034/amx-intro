@@ -34,6 +34,13 @@ module load intel-vtune && \
 tssrun -p gr10034a --rsc m=1G vtune -collect hotspots -r=./results/result_amx_o2 build/t27_amx_o2
 ```
 
+o3
+```sh
+icc -g -O3 t27_amx_o3.c -o build/t27_amx_o3 && \
+module load intel-vtune && \
+tssrun -p gr10034a --rsc m=1G vtune -collect hotspots -r=./results/result_amx_o3 build/t27_amx_o3
+```
+
 ```
 -xCOMMON-AVX512
 -xCORE-AVX2
