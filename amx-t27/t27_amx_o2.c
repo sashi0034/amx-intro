@@ -98,9 +98,9 @@ void convolution_amx(
 
             if (c == c_end - 1) {
                 for (int acc = 0; acc < FILTER_SIZE; ++acc) {
-                    _tile_stream_loadd(0, packed_filter[acc].bytes, PACKED_FILTER_COLS * sizeof(int8_t));
+                    _tile_loadd(0, packed_filter[acc].bytes, PACKED_FILTER_COLS * sizeof(int8_t));
 
-                    _tile_stream_loadd(2, &input->rows[r + acc].cols[c], INPUT_COLS * sizeof(int8_t)); // FIXME: stride
+                    _tile_loadd(2, &input->rows[r + acc].cols[c], INPUT_COLS * sizeof(int8_t)); // FIXME: stride
                     _tile_dpbssd(1, 2, 0);
                 }
 
@@ -110,10 +110,10 @@ void convolution_amx(
                 for (int acc = 0; acc < FILTER_SIZE; ++acc) {
                     _tile_loadd(0, packed_filter[acc].bytes, PACKED_FILTER_COLS * sizeof(int8_t));
 
-                    _tile_stream_loadd(2, &input->rows[r + acc].cols[c], INPUT_COLS * sizeof(int8_t)); // FIXME: stride
+                    _tile_loadd(2, &input->rows[r + acc].cols[c], INPUT_COLS * sizeof(int8_t)); // FIXME: stride
                     _tile_dpbssd(1, 2, 0);
 
-                    _tile_stream_loadd(4, &input->rows[r + acc].cols[c + 1],
+                    _tile_loadd(4, &input->rows[r + acc].cols[c + 1],
                                        INPUT_COLS * sizeof(int8_t)); // FIXME: stride
                     _tile_dpbssd(3, 4, 0);
                 }
@@ -124,15 +124,15 @@ void convolution_amx(
                 for (int acc = 0; acc < FILTER_SIZE; ++acc) {
                     _tile_loadd(0, packed_filter[acc].bytes, PACKED_FILTER_COLS * sizeof(int8_t));
 
-                    _tile_stream_loadd(
+                    _tile_loadd(
                             2, &input->rows[r + acc].cols[c], INPUT_COLS * sizeof(int8_t)); // FIXME: stride
                     _tile_dpbssd(1, 2, 0);
 
-                    _tile_stream_loadd(
+                    _tile_loadd(
                             4, &input->rows[r + acc].cols[c + 1], INPUT_COLS * sizeof(int8_t)); // FIXME: stride
                     _tile_dpbssd(3, 4, 0);
 
-                    _tile_stream_loadd(
+                    _tile_loadd(
                             6, &input->rows[r + acc].cols[c + 1], INPUT_COLS * sizeof(int8_t)); // FIXME: stride
                     _tile_dpbssd(5, 6, 0);
                 }
