@@ -133,7 +133,7 @@ void convolution(
                     _tile_dpbssd(3, 4, 0);
 
                     _tile_loadd(
-                            6, &input->rows[r + acc].cols[c + 1], INPUT_COLS * sizeof(int8_t)); // FIXME: stride
+                            6, &input->rows[r + acc].cols[c + 2], INPUT_COLS * sizeof(int8_t)); // FIXME: stride
                     _tile_dpbssd(5, 6, 0);
                 }
 

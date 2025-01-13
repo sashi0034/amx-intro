@@ -11,7 +11,7 @@ icc -g -O3 t27_amx_o4.c -o build/t27_amx_o4 && tssrun -p gr10034a build/t27_amx_
 ```
 
 ```sh
-icc -g -O3 t27_naive.c -o build/t27_naive && tssrun -p gr10034a build/t27_naive
+icc -g -O3 t27_naive.c -xCOMMON-AVX512 -o build/t27_naive && tssrun -p gr10034a build/t27_naive
 ```
 
 # アセンブリ出力

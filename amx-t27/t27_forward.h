@@ -19,7 +19,7 @@
             struct { \
                 int8_t cols[(c)]; \
             } rows[(r)]; \
-            int8_t* mat[r][c]; \
+            int8_t mat[r][c]; \
         }; \
     } name; \
     \
@@ -146,7 +146,7 @@ static void init_filter(filter7x7_t filter[INPUT_CH]) {
         for (int i = 0; i < FILTER_SIZE; ++i) {
             for (int j = 0; j < FILTER_SIZE; ++j) {
                 for (int n = 0; n < FILTER_CH; ++n) {
-                    filter[f].rows[i].cols[j].ch[n] = (int8_t) (f + i + j - n);
+                    filter[f].rows[i].cols[j].ch[n] = (int8_t) (f + i * 2 - j * 3 - n);
                 }
             }
         }

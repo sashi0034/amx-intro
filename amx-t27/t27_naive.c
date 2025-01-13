@@ -6,18 +6,18 @@
 void convolution(output_mat_t *output, const input_mat_t *input, const filter7x7_t filter[INPUT_CH]) {
     for (int r = 0; r < INPUT_ROWS - FILTER_PADDING * 2; ++r) {
         for (int c = 0; c < INPUT_COLS - FILTER_PADDING * 2; ++c) {
-            for (int fn = 0; fn < FILTER_CH; ++fn) {
+            for (int fch = 0; fch < FILTER_CH; ++fch) {
 
                 int32_t sum = 0;
                 for (int fr = 0; fr < FILTER_SIZE; ++fr) {
                     for (int fc = 0; fc < FILTER_SIZE; ++fc) {
-                        for (int in = 0; in < INPUT_CH; ++in) {
-                            sum += input->rows[r + fr].cols[c + fc].ch[in] * filter[in].rows[fr].cols[fc].ch[fn];
+                        for (int ich = 0; ich < INPUT_CH; ++ich) {
+                            sum += input->rows[r + fr].cols[c + fc].ch[ich] * filter[ich].rows[fr].cols[fc].ch[fch];
                         }
                     }
                 }
 
-                output->rows[r].cols[c].ch[fn] = sum;
+                output->rows[r].cols[c].ch[fch] = sum;
             }
         }
     }
