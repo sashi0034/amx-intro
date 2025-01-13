@@ -4,8 +4,8 @@
 // -----------------------------------------------
 
 void convolution(output_mat_t *output, const input_mat_t *input, const filter7x7_t filter[INPUT_CH]) {
-    for (int r = 0; r < INPUT_ROWS - FILTER_OFFSET * 2; ++r) {
-        for (int c = 0; c < INPUT_COLS - FILTER_OFFSET * 2; ++c) {
+    for (int r = 0; r < INPUT_ROWS - FILTER_PADDING * 2; ++r) {
+        for (int c = 0; c < INPUT_COLS - FILTER_PADDING * 2; ++c) {
             for (int fn = 0; fn < FILTER_CH; ++fn) {
 
                 int32_t sum = 0;

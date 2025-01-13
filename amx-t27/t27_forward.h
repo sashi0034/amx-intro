@@ -133,7 +133,7 @@ static void init_input_mat(input_mat_t *mat) {
 }
 
 #define FILTER_SIZE 7
-#define FILTER_OFFSET ((FILTER_SIZE - 1) / 2)
+#define FILTER_PADDING ((FILTER_SIZE - 1) / 2)
 
 #define FILTER_CH 16 // equals to the number of output channels
 

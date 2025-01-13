@@ -91,9 +91,9 @@ void convolution(
         output_mat_t *restrict output,
         const input_mat_t *restrict input,
         const packed_filter_t packed_filter[FILTER_SIZE]) {
-    for (int r = 0; r < OUTPUT_ROWS - FILTER_OFFSET * 2; ++r) {
-        for (int c = 0; c < OUTPUT_COLS - FILTER_OFFSET * 2 - AMX_ROWS_16; c += AMX_ROWS_16 * 3) {
-            if (c > OUTPUT_COLS - FILTER_OFFSET * 2 - AMX_ROWS_16 * 2) {
+    for (int r = 0; r < OUTPUT_ROWS - FILTER_PADDING * 2; ++r) {
+        for (int c = 0; c < OUTPUT_COLS - FILTER_PADDING * 2 - AMX_ROWS_16; c += AMX_ROWS_16 * 3) {
+            if (c > OUTPUT_COLS - FILTER_PADDING * 2 - AMX_ROWS_16 * 2) {
                 _tile_zero(1);
 
                 for (int acc = 0; acc < FILTER_SIZE; ++acc) {
@@ -104,7 +104,7 @@ void convolution(
                 }
 
                 _tile_stored(1, &output->rows[r].cols[c], FILTER_CH * sizeof(int32_t));
-            } else if (c > OUTPUT_COLS - FILTER_OFFSET * 2 - AMX_ROWS_16 * 3) {
+            } else if (c > OUTPUT_COLS - FILTER_PADDING * 2 - AMX_ROWS_16 * 3) {
                 _tile_zero(1);
                 _tile_zero(3);
 
@@ -145,7 +145,7 @@ void convolution(
         }
 
         {
-            const int c = OUTPUT_COLS - FILTER_OFFSET * 2 - AMX_ROWS_16;
+            const int c = OUTPUT_COLS - FILTER_PADDING * 2 - AMX_ROWS_16;
             _tile_zero(1);
 
             for (int acc = 0; acc < FILTER_SIZE; ++acc) {

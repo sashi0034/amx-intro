@@ -89,8 +89,8 @@ void convolution(
         output_mat_t *restrict output,
         const input_mat_t *restrict input,
         const packed_filter_t packed_filter[FILTER_SIZE]) {
-    for (int r = 0; r < OUTPUT_ROWS - FILTER_OFFSET * 2; ++r) {
-        const int c_end = OUTPUT_COLS - FILTER_OFFSET * 2;
+    for (int r = 0; r < OUTPUT_ROWS - FILTER_PADDING * 2; ++r) {
+        const int c_end = OUTPUT_COLS - FILTER_PADDING * 2;
         for (int c = 0; c < c_end; c += 3) {
             _tile_zero(1);
             _tile_zero(3);

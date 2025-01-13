@@ -79,8 +79,8 @@ void convolution(
         output_mat_t *restrict output,
         const input_mat_t *restrict input,
         const packed_filter_t packed_filter[FILTER_SIZE]) {
-    for (int r = 0; r < OUTPUT_ROWS - FILTER_OFFSET * 2; ++r) {
-        for (int c = 0; c < OUTPUT_COLS - FILTER_OFFSET * 2 - AMX_ROWS_16; c += AMX_ROWS_16) {
+    for (int r = 0; r < OUTPUT_ROWS - FILTER_PADDING * 2; ++r) {
+        for (int c = 0; c < OUTPUT_COLS - FILTER_PADDING * 2 - AMX_ROWS_16; c += AMX_ROWS_16) {
             _tile_zero(1);
 
             for (int acc = 0; acc < FILTER_SIZE; ++acc) {
@@ -94,7 +94,7 @@ void convolution(
         }
 
         {
-            const int c = OUTPUT_COLS - FILTER_OFFSET * 2 - AMX_ROWS_16;
+            const int c = OUTPUT_COLS - FILTER_PADDING * 2 - AMX_ROWS_16;
             _tile_zero(1);
 
             for (int acc = 0; acc < FILTER_SIZE; ++acc) {
