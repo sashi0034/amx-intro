@@ -55,9 +55,9 @@ icc -g -xCORE-AVX512 -qopt-zmm-usage=high -O3 t21_avx.c -o build/t21_avx512 && b
 - AMX
 
 ```sh
-icc -g -O3 t21_amx.c -o build/t21_amx && \
+icc -g -O3 -qopenmp t21_amx.c -o build/t21_amx && \
 module load intel-vtune && \
-tssrun -p gr10034a --rsc m=1G vtune -collect hotspots -r=./results/result_amx build/t21_amx
+tssrun -p gr10034a --rsc m=1G vtune -collect hotspots -r=./results/result_amx build/t21_amx 1
 ```
 
 AVX-512
