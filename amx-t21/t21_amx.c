@@ -6,6 +6,7 @@
 #include <unistd.h>
 #include <stdbool.h>
 #include <memory.h>
+#include <omp.h>
 
 #define MAX_SRC_256 256
 #define MAX_DST_64 64
@@ -132,7 +133,9 @@ static void init_all_tests_from_buffer(matrix_set_t *test_array, test_buffer_t *
     }
 }
 
-void compute_dot_products(matrix_set_t *test_array, int64_t cases) {
+void compute_dot_products(matrix_set_t *test_array, int64_t cases, int use_threads) {
+    omp_set_num_threads(use_threads);
+#pragma omp parallel for schedule(static)
     for (int t = 0; t < cases; ++t) {
         matrix_set_t *mat = &test_array[t];
         _tile_loadd(2, mat->a.bytes, 32 * sizeof(int8_t));
@@ -161,12 +164,19 @@ static void check_result_validation(const matrix_set_t *test_array, test_buffer_
     printf("Errors: %d\n", errors);
 }
 
-int main() {
+int main(int argc, char *argv[]) {
     test_buffer_t buffer;
     if (!read_test_buffer(&buffer)) {
         printf("Failed to read test buffer\n");
         return -1;
     }
+
+    int use_threads = 1;
+    if (argc == 2) {
+        use_threads = atoi(argv[1]);
+    }
+
+    printf("Using %d threads\n", use_threads);
 
     // Allocate memory for test cases
     matrix_set_t *test_array = (matrix_set_t *) malloc(buffer.cases * sizeof(matrix_set_t));
@@ -181,7 +191,7 @@ int main() {
     init_all_tests_from_buffer(test_array, &buffer);
 
     // Compute dot product for each test case
-    compute_dot_products(test_array, buffer.cases);
+    compute_dot_products(test_array, buffer.cases, use_threads);
 
     // // Check if the result is correct
     check_result_validation(test_array, &buffer);
