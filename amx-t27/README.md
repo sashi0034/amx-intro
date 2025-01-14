@@ -62,3 +62,11 @@ icc -g -O3 t27_naive.c -xCOMMON-AVX512 -o build/t27_naive && \
 module load intel-vtune && \
 tssrun -p gr10034a --rsc m=1G vtune -collect hotspots -r=./results/result_naive build/t27_naive
 ```
+
+SysG
+```
+nvc -acc -gpu=cc80 -Minfo=accel -O2 -o build/t27g_naive t27_naive.c && tssrun build/t27g_naive
+
+nvc -acc -gpu=cc80 -Minfo=accel -O2 -o build/t27g_gpu t27_gpu.c && tssrun build/t27g_gpu
+```
+
