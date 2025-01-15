@@ -9,8 +9,8 @@ def run_command(command):
 
 
 if __name__ == "__main__":
-    results_dir = "results20"
-    data_dir = "data20"
+    results_dir = "results"
+    data_dir = "data_"
 
     # Ensure the output directory exists
     os.makedirs(data_dir, exist_ok=True)

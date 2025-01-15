@@ -50,12 +50,11 @@ def calculate_execution_time(file_path):
     return execution_time
 
 
-def get_txt_files_in_data20():
+def get_txt_files_in_data(dir_name):
     """
     data20 ディレクトリ内の .txt ファイルパスを一覧で取得し、
     名前順でソートして返す。
     """
-    dir_name = 'data20'
     result = []
     if not os.path.isdir(dir_name):
         return result
@@ -70,8 +69,8 @@ def get_txt_files_in_data20():
     return result
 
 
-def main():
-    txt_files = get_txt_files_in_data20()
+if __name__ == "__main__":
+    txt_files = get_txt_files_in_data("data_")
 
     for file_path in txt_files:
         execution_time = calculate_execution_time(file_path)
@@ -82,7 +81,3 @@ def main():
             print(f"{base_name}, {execution_time}")
         else:
             print(f"{base_name}, Not Found")
-
-
-if __name__ == "__main__":
-    main()

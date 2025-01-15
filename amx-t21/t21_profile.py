@@ -73,7 +73,7 @@ if __name__ == '__main__':
         gen_command = f"icpc -O3 t21_generate.cpp -o build/t21_generate && build/t21_generate {cases}"
         run_command(gen_command)
 
-        for thread in range(1, 21):
+        for thread in [1, 14, 28, 56]:
             # 2. Run the VTune profiling
             run_vtune_profile(
                 f"amx_{cases}_th{thread}",
