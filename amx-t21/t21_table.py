@@ -1,82 +1,88 @@
 import os
 import re
-import csv
 
 
-# extract_result_from_data 関数の定義
-def extract_result_from_data(file, fn_name):
-    with open(file, "r") as file:
-        for line in file:
-            if line.startswith(fn_name):
-                elements = line.split()
-                if len(elements) > 1:
-                    try:
-                        return float(elements[1].rstrip("s"))
-                    except ValueError:
-                        print(f"Cannot convert '{elements[1]}' to float.")
-                        return 0
-    return 0
+def calculate_execution_time(file_path):
+    """
+    指定されたテキストファイルから
+      Elapsed Time: {数値}s
+      init_all_tests_from_buffer {数値}s
+      check_result_validation {数値}s
+      fread {数値}s
+    を正規表現で取得し、execution_time = 上記を用いて計算して返す。
+    """
+    # 正規表現パターンのコンパイル
+    pattern_elapsed = re.compile(r'Elapsed\s*Time:\s*([\d\.]+)\s*s')
+    pattern_init = re.compile(r'init_all_tests_from_buffer\s*([\d\.]+)\s*s')
+    pattern_check = re.compile(r'check_result_validation\s*([\d\.]+)\s*s')
+    pattern_fread = re.compile(r'fread\s*([\d\.]+)\s*s')
+
+    elapsed_time = None
+    init_time = 0.0
+    check_time = 0.0
+    fread_time = 0.0
+
+    with open(file_path, encoding='utf-8') as f:
+        for line in f:
+            if elapsed_time is None:
+                match_elapsed = pattern_elapsed.search(line)
+                if match_elapsed:
+                    elapsed_time = float(match_elapsed.group(1))
+            # 以下3つは初回マッチだけを想定
+            if init_time == 0.0:
+                match_init = pattern_init.search(line)
+                if match_init:
+                    init_time = float(match_init.group(1))
+            if check_time == 0.0:
+                match_check = pattern_check.search(line)
+                if match_check:
+                    check_time = float(match_check.group(1))
+            if fread_time == 0.0:
+                match_fread = pattern_fread.search(line)
+                if match_fread:
+                    fread_time = float(match_fread.group(1))
+
+    # いずれかが未取得だった場合は None のまま
+    if elapsed_time is None:
+        return None
+
+    execution_time = elapsed_time - init_time - check_time - fread_time
+    return execution_time
 
 
-# メイン処理
+def get_txt_files_in_data20():
+    """
+    data20 ディレクトリ内の .txt ファイルパスを一覧で取得し、
+    名前順でソートして返す。
+    """
+    dir_name = 'data20'
+    result = []
+    if not os.path.isdir(dir_name):
+        return result
+
+    for file_name in os.listdir(dir_name):
+        if file_name.endswith('.txt'):
+            result.append(os.path.join(dir_name, file_name))
+
+    # ファイル名でソート(フルパスではなくbasenameでソートしたい場合は分けて処理)
+    # ここではフルパスのリストを「ファイル名の名前順」にソート
+    result.sort(key=lambda path: os.path.basename(path))
+    return result
+
+
+def main():
+    txt_files = get_txt_files_in_data20()
+
+    for file_path in txt_files:
+        execution_time = calculate_execution_time(file_path)
+        # ファイル名 (拡張子抜き) を取得
+        base_name = os.path.splitext(os.path.basename(file_path))[0]
+
+        if execution_time is not None:
+            print(f"{base_name}, {execution_time}")
+        else:
+            print(f"{base_name}, Not Found")
+
+
 if __name__ == "__main__":
-    # データ収集用ディレクトリとファイル名の正規表現
-    data_dir = "data"
-    amx_pattern = re.compile(r"data_amx_(\d+)\.txt")
-    avx512_pattern = re.compile(r"data_avx512_(\d+)\.txt")
-    avx2_pattern = re.compile(r"data_avx2_(\d+)\.txt")
-    sse42_pattern = re.compile(r"data_sse42_(\d+)\.txt")
-
-    # データを格納する辞書
-    test_cases = {}
-
-    # ディレクトリ内のファイルを列挙してテストケース番号と実行時間を収集
-    for filename in os.listdir(data_dir):
-        filepath = os.path.join(data_dir, filename)
-        case_number = None
-
-        if amx_pattern.match(filename):
-            case_number = int(amx_pattern.match(filename).group(1))
-            test_cases.setdefault(case_number, {})["AMX"] = extract_result_from_data(filepath, "compute_dot_products")
-        elif avx512_pattern.match(filename):
-            case_number = int(avx512_pattern.match(filename).group(1))
-            test_cases.setdefault(case_number, {})["AVX-512"] = extract_result_from_data(filepath, "dot_product")
-        elif avx2_pattern.match(filename):
-            case_number = int(avx2_pattern.match(filename).group(1))
-            test_cases.setdefault(case_number, {})["AVX2"] = extract_result_from_data(filepath, "dot_product")
-        elif sse42_pattern.match(filename):
-            case_number = int(sse42_pattern.match(filename).group(1))
-            test_cases.setdefault(case_number, {})["SSE4.2"] = extract_result_from_data(filepath, "dot_product")
-
-    # 各テストケースのデータを標準出力
-    sorted_cases = sorted(test_cases.keys())
-
-    # ヘッダーの出力
-    print("Size, AMX, AVX2, SSE4.2, AVX-512")
-
-    # データの出力
-    for case in sorted_cases:
-        print(", ".join(map(str, [
-            case,
-            test_cases[case].get("AMX", 0),
-            test_cases[case].get("AVX2", 0),
-            test_cases[case].get("SSE4.2", 0),
-            test_cases[case].get("AVX-512", 0)
-        ])))
-
-    # AMX と AVX2 の比率を計算して出力
-    amx_sum = 0
-    avx2_sum = 0
-    count = 0
-    for case in sorted_cases:
-        amx_time = test_cases[case].get("AMX", 0)
-        avx2_time = test_cases[case].get("AVX2", 0)
-        if amx_time > 0 and avx2_time > 0:
-            amx_sum += amx_time
-            avx2_sum += avx2_time
-            count += 1
-    if count > 0:
-        ratio = amx_sum / avx2_sum
-        print(f"\nAverage AMX to AVX2 ratio: {ratio:.3f} ({1.0 / ratio:.3})")
-    else:
-        print("\nNo valid data for AMX and AVX2 ratio calculation.")
+    main()
