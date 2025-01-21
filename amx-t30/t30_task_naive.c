@@ -40,6 +40,9 @@ int main() {
     output_t output;
     memset(&output, 0, sizeof(output_t));
 
+    printf("start main loop\n");
+    fflush(stdout);
+
     // Main loop
     for (int ii = 1; ii <= LAST; ii++) {
         tick_sim_state(&simState, ii);

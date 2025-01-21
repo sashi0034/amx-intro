@@ -104,6 +104,22 @@ static void init_tile_config() {
     tile.colsb[2] = 4 * sizeof(bf16_t);
     tile.rows[2] = 16;
 
+//    // Output 1
+//    tile.colsb[3] = 1 * sizeof(fp32_t);
+//    tile.rows[3] = 16;
+//
+//    // Input 1
+//    tile.colsb[4] = 4 * sizeof(bf16_t);
+//    tile.rows[4] = 16;
+//
+//    // Output 2
+//    tile.colsb[5] = 1 * sizeof(fp32_t);
+//    tile.rows[5] = 16;
+//
+//    // Input 2
+//    tile.colsb[6] = 4 * sizeof(bf16_t);
+//    tile.rows[6] = 16;
+
     _tile_loadconfig(&tile);
 }
 
@@ -192,6 +208,9 @@ int main() {
 
     output_t output;
     memset(&output, 0, sizeof(output_t));
+
+    printf("start main loop\n");
+    fflush(stdout);
 
     // Main loop
     for (int ii = 1; ii <= LAST; ii++) {

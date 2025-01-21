@@ -11,9 +11,15 @@ icc -g -O3 t30_task_naive.c t30_mhd.c t30_sim.c -o build/t30_task_naive && tssru
 ```
 
 ```
-icc -g -O2 t30_task_amx.c t30_mhd.c t30_sim.c -o build/t30_task_amx && \
+icc -g -O3 -xCOMMON-AVX512 t30_task_amx.c t30_mhd.c t30_sim.c -o build/t30_task_amx && \
 module load intel-vtune && \
 tssrun -p gr10034a --rsc m=50G vtune -collect hotspots -r=./result/t30_task_amx build/t30_task_amx
+```
+
+```
+icc -g -O3 -xCOMMON-AVX512 t30_task_naive.c t30_mhd.c t30_sim.c -o build/t30_task_naive && \
+module load intel-vtune && \
+tssrun -p gr10034a --rsc m=50G vtune -collect hotspots -r=./result/t30_task_naive build/t30_task_naive
 ```
 
 失敗
