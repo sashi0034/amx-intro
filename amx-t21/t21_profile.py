@@ -56,12 +56,12 @@ def run_vtune_profile(label, compile_cmd, exe_arg):
         compile_cmd + f" -o {build} && "
                       f"module load intel-vtune && "
                       f"tssrun -p gr10034a --rsc m=50G vtune -collect hotspots -r=./results/result_{label} {build} {exe_arg}")
-    result_dir = find_latest_result_dir(f"./results/result_{label}")
-    report_command = (
-        f"module load intel-vtune && "
-        f"vtune -report hotspots -result-dir {result_dir} -format text -filter compute_dot_products > data/data_{label}.txt"
-    )
-    run_command(report_command)
+    # result_dir = find_latest_result_dir(f"./results/result_{label}")
+    # report_command = (
+    #     f"module load intel-vtune && "
+    #     f"vtune -report hotspots -result-dir {result_dir} -format text -filter compute_dot_products > data/data_{label}.txt"
+    # )
+    # run_command(report_command)
 
 
 if __name__ == '__main__':
@@ -71,7 +71,7 @@ if __name__ == '__main__':
     for cases in test_cases:
         # 1. Compile and run t21_generate with each test case
         gen_command = f"icpc -O3 t21_generate.cpp -o build/t21_generate && build/t21_generate {cases}"
-        run_command(gen_command)
+        # run_command(gen_command)
 
         for thread in [1, 14, 28, 56]:
             # 2. Run the VTune profiling

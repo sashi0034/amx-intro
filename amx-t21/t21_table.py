@@ -81,3 +81,5 @@ if __name__ == "__main__":
             print(f"{base_name}, {execution_time}")
         else:
             print(f"{base_name}, Not Found")
+
+    print("\n")

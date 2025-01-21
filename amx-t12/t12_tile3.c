@@ -162,21 +162,21 @@ void compute_all_tests(MatrixTuple *test_array, Bytes8x32 *filter, int64_t cases
         MatrixTuple *mat1 = &test_array[t + 1];
         MatrixTuple *mat2 = &test_array[t + 2];
 
-        _tile_loadd(2, mat0->input.bytes, STRIDE_32);
-        _tile_loadd(3, mat0->output.dwords, STRIDE_32);
+        _tile_loadd(2, mat0->input.bytes, 32 * sizeof(int8_t));
+        _tile_loadd(3, mat0->output.dwords, 8 * sizeof(int32_t));
         _tile_dpbssd(3, 2, 1);
 
-        _tile_loadd(4, mat1->input.bytes, STRIDE_32);
-        _tile_loadd(5, mat1->output.dwords, STRIDE_32);
+        _tile_loadd(4, mat1->input.bytes, 32 * sizeof(int8_t));
+        _tile_loadd(5, mat1->output.dwords, 8 * sizeof(int32_t));
         _tile_dpbssd(5, 4, 1);
 
-        _tile_loadd(6, mat2->input.bytes, STRIDE_32);
-        _tile_loadd(7, mat2->output.dwords, STRIDE_32);
+        _tile_loadd(6, mat2->input.bytes, 32 * sizeof(int8_t));
+        _tile_loadd(7, mat2->output.dwords, 8 * sizeof(int32_t));
         _tile_dpbssd(7, 6, 1);
 
-        _tile_stored(3, mat0->output.dwords, STRIDE_32);
-        _tile_stored(5, mat1->output.dwords, STRIDE_32);
-        _tile_stored(7, mat2->output.dwords, STRIDE_32);
+        _tile_stored(3, mat0->output.dwords, 8 * sizeof(int32_t));
+        _tile_stored(5, mat1->output.dwords, 8 * sizeof(int32_t));
+        _tile_stored(7, mat2->output.dwords, 8 * sizeof(int32_t));
     }
 
     for (int64_t int64 = forward_cases; int64 < cases; int64++) {

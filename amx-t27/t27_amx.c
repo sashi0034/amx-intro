@@ -82,7 +82,7 @@ void convolution(
             _tile_zero(1);
 
             for (int acc = 0; acc < FILTER_SIZE; ++acc) {
-                _tile_loadd(0, packed_filter[acc].bytes, PACKED_FILTER_COLS * sizeof(int8_t));
+                _tile_loadd(0, &packed_filter[acc].bytes[0], PACKED_FILTER_COLS * sizeof(int8_t));
                 _tile_loadd(2, &input->rows[r + acc].cols[c], INPUT_COLS * sizeof(int8_t)); // FIXME: stride
 
                 _tile_dpbssd(1, 2, 0);

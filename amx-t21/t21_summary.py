@@ -1,4 +1,5 @@
 import os
+import shutil
 import subprocess
 
 
@@ -11,6 +12,10 @@ def run_command(command):
 if __name__ == "__main__":
     results_dir = "results"
     data_dir = "data_"
+
+    if os.path.exists(data_dir):
+        shutil.rmtree(data_dir)
+    os.makedirs(data_dir, exist_ok=True)
 
     # Ensure the output directory exists
     os.makedirs(data_dir, exist_ok=True)
