@@ -19,6 +19,8 @@ void output_conv(const output_t *output, const char *filename) {
     }
 
     for (int i = 0; i < LAST; ++i) {
+        fprintf(file, "-----------------------------------------------\n");
+        fprintf(file, "i: %d\n", i);
         fprint_SimMat(file, &output->mats[i]);
         fprintf(file, "\n");
     }

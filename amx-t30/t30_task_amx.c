@@ -100,7 +100,7 @@ static void init_tile_config() {
     tile.colsb[1] = 1 * sizeof(fp32_t);
     tile.rows[1] = 16;
 
-    // Output 0
+    // Input 0
     tile.colsb[2] = 4 * sizeof(bf16_t);
     tile.rows[2] = 16;
 
@@ -114,6 +114,8 @@ void store_tfilter(tfilter_t tfilter[3], const Filter3x3 *filter) {
             const int pr = c;
             tfilter[r].rows[pr / 2].cols[pc * 4 + pr % 2] = fp32_to_bf16(filter->rows[r].cols[c]);
         }
+
+        tfilter[r].bf16s[3] = 0;
     }
 }
 
@@ -128,12 +130,24 @@ void store_input_buffer(input_buffer_t *input_buffer, const SimMat *input) {
 
 void convolution_amx(SimMat *output, const input_buffer_t *input, const tfilter_t tfilter[3]) {
     for (int r = 0; r < SIM_MAT_ROWS - FILTER_PADDING * 2; ++r) {
-        for (int c = 0; c < SIM_MAT_COLS - FILTER_PADDING * 2; c += 16) {
+        for (int c = 0; c < SIM_MAT_COLS - FILTER_PADDING * 2 - 16; c += 16) {
             _tile_zero(1);
             for (int acc = 0; acc < 3; ++acc) {
                 _tile_loadd(0, tfilter[acc].bf16s, 2 * sizeof(bf16_t));
                 _tile_loadd(2, &input->rows[r + acc].cols[c], 1 * sizeof(bf16_t));
-                _tile_dpbssd(1, 2, 0);
+                _tile_dpbf16ps(1, 2, 0);
+            }
+
+            _tile_stored(1, &output->rows[r].cols[c], 1 * sizeof(fp32_t));
+        }
+
+        {
+            const int c = SIM_MAT_COLS - FILTER_PADDING * 2 - 16;
+            _tile_zero(1);
+            for (int acc = 0; acc < 3; ++acc) {
+                _tile_loadd(0, tfilter[acc].bf16s, 2 * sizeof(bf16_t));
+                _tile_loadd(2, &input->rows[r + acc].cols[c], 1 * sizeof(bf16_t));
+                _tile_dpbf16ps(1, 2, 0);
             }
 
             _tile_stored(1, &output->rows[r].cols[c], 1 * sizeof(fp32_t));
@@ -171,7 +185,7 @@ int main() {
     memset(&output, 0, sizeof(output_t));
 
     // Main loop
-    for (int ii = 1; ii <= LAST; ii++) {
+    for (int ii = 1; ii <= 1; ii++) {
         tick_sim_state(&simState, ii);
 
         mock_task(&output.mats[ii - 1], simState.f, tfilter);
