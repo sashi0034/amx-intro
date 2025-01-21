@@ -120,10 +120,19 @@ void store_tfilter(tfilter_t tfilter[3], const Filter3x3 *filter) {
 }
 
 void store_input_buffer(input_buffer_t *input_buffer, const SimMat *input) {
-    // TODO: AVX-512 で高速化
     for (int r = 0; r < SIM_MAT_ROWS; ++r) {
-        for (int c = 0; c < SIM_MAT_COLS; ++c) {
-            input_buffer->rows[r].cols[c] = fp32_to_bf16(input->rows[r].cols[c]);
+        _Static_assert(SIM_MAT_COLS % 32 == 0, "Cols must be multiple of 32");
+        for (int c = 0; c < SIM_MAT_COLS; c += 32) {
+            // 1. まず前半の 16 要素をロード
+            __m512 zmm0 = _mm512_loadu_ps(&input->rows[r].cols[c]); // float 16要素
+            // 2. 続いて後半の 16 要素をロード
+            __m512 zmm1 = _mm512_loadu_ps(&input->rows[r].cols[c + 16]); // float 16要素
+
+            // 3. 2 つの __m512 (計 32 要素) を bfloat16 に圧縮変換
+            __m512bh bf16_32 = _mm512_cvtne2ps_pbh(zmm1, zmm0);
+
+            // 4. 変換結果 (32 要素分の bf16 = 64 バイト) を out に書き込み
+            _mm512_storeu_si512(&input_buffer->rows[r].cols[c], bf16_32);
         }
     }
 }
@@ -185,7 +194,7 @@ int main() {
     memset(&output, 0, sizeof(output_t));
 
     // Main loop
-    for (int ii = 1; ii <= 1; ii++) {
+    for (int ii = 1; ii <= LAST; ii++) {
         tick_sim_state(&simState, ii);
 
         mock_task(&output.mats[ii - 1], simState.f, tfilter);
