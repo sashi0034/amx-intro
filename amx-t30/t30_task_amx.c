@@ -59,6 +59,10 @@ typedef struct { // __tile_config
         } \
     }
 
+DEFINE_BF16MAT(tfilter_t, 2, 2);
+
+DEFINE_BF16MAT(input_buffer_t, SIM_MAT_ROWS, SIM_MAT_COLS);
+
 #define PATCH_STRIDE_16 16
 #define PATCH_INPUT_ROWS PATCH_STRIDE_16
 #define PATCH_INPUT_COLS 10 // = 9 + 1
@@ -68,14 +72,6 @@ typedef struct { // __tile_config
 
 #define PATCH_OUTPUT_ROWS PATCH_INPUT_ROWS
 #define PATCH_OUTPUT_COLS 1
-
-DEFINE_BF16MAT(PatchInputMat, PATCH_INPUT_ROWS, PATCH_INPUT_COLS)
-
-DEFINE_BF16MAT(PatchFilterMat, PATCH_FILTER_ROWS, PATCH_FILTER_COLS)
-
-DEFINE_MATRIX(PatchOutputMat,
-
-              PATCH_OUTPUT_ROWS, PATCH_OUTPUT_COLS)
 
 static bool prepare_system_for_amx() {
     if (syscall(SYS_arch_prctl, ARCH_REQ_XCOMP_PERM, XFEATURE_XTILEDATA)) {
@@ -96,96 +92,64 @@ static void init_tile_config() {
     tile.palette_id = 1;
     tile.start_row = 0;
 
-    // Result Register
-    tile.colsb[PATCH_OUTPUT_REG_1] = PATCH_OUTPUT_COLS * sizeof(fp32_t);
-    tile.rows[PATCH_OUTPUT_REG_1] = PATCH_OUTPUT_ROWS;
+    // Filter
+    tile.colsb[0] = 2 * sizeof(bf16_t);
+    tile.rows[0] = 2;
 
-    // Source Register A
-    tile.colsb[PATCH_INPUT_REG_2] = PATCH_INPUT_COLS * sizeof(bf16_t);
-    tile.rows[PATCH_INPUT_REG_2] = PATCH_INPUT_ROWS;
+    // Output 0
+    tile.colsb[1] = 1 * sizeof(fp32_t);
+    tile.rows[1] = 16;
 
-    // Source Register B
-    tile.colsb[PATCH_FILTER_REG_3] = PATCH_FILTER_COLS * sizeof(bf16_t);
-    tile.rows[PATCH_FILTER_REG_3] = PATCH_FILTER_ROWS;
-
-//    printf("1: (%d, %d), 2: (%d, %d), 3: (%d, %d)\n",
-//           tile.colsb[PATCH_OUTPUT_REG_1], tile.rows[PATCH_OUTPUT_REG_1],
-//           tile.colsb[PATCH_INPUT_REG_2], tile.rows[PATCH_INPUT_REG_2],
-//           tile.colsb[PATCH_FILTER_REG_3], tile.rows[PATCH_FILTER_REG_3]);
-//    fflush(stdout);
+    // Output 0
+    tile.colsb[2] = 4 * sizeof(bf16_t);
+    tile.rows[2] = 16;
 
     _tile_loadconfig(&tile);
 }
 
-void load_patch_filter(const Filter3x3 *filter) {
-    PatchFilterMat patch_filter;
-    for (int r = 0; r < FILTER_SIZE; ++r) {
-        for (int c = 0; c < FILTER_SIZE; ++c) {
-            const int index = r * FILTER_SIZE + c;
-            patch_filter.rows[index / 2].cols[index % 2] = fp32_to_bf16(filter->rows[r].cols[c]);
+void store_tfilter(tfilter_t tfilter[3], const Filter3x3 *filter) {
+    for (int r = 0; r < 3; ++r) {
+        for (int c = 0; c < 3; ++c) {
+            const int pc = 0;
+            const int pr = c;
+            tfilter[r].rows[pr / 2].cols[pc * 4 + pr % 2] = fp32_to_bf16(filter->rows[r].cols[c]);
         }
     }
-
-    _tile_loadd(PATCH_FILTER_REG_3, patch_filter.bf16s, PATCH_FILTER_COLS * sizeof(bf16_t));
 }
 
-void load_patch_input(PatchInputMat *patch_input, const SimMat *input, int patchRaw, int col16) {
-    for (int pr = 0; pr < PATCH_INPUT_ROWS; ++pr) {
-        for (int pc = 0; pc < FILTER_SIZE * FILTER_SIZE; ++pc) {
-            if (col16 * PATCH_STRIDE_16 + pr >= SIM_MAT_COLS - FILTER_PADDING * 2) {
-                // フィルタを適応しない部分
-                patch_input->rows[pr].cols[pc] = 0;
-                continue;
+void store_input_buffer(input_buffer_t *input_buffer, const SimMat *input) {
+    // TODO: AVX-512 で高速化
+    for (int r = 0; r < SIM_MAT_ROWS; ++r) {
+        for (int c = 0; c < SIM_MAT_COLS; ++c) {
+            input_buffer->rows[r].cols[c] = fp32_to_bf16(input->rows[r].cols[c]);
+        }
+    }
+}
+
+void convolution_amx(SimMat *output, const input_buffer_t *input, const tfilter_t tfilter[3]) {
+    for (int r = 0; r < SIM_MAT_ROWS - FILTER_PADDING * 2; ++r) {
+        for (int c = 0; c < SIM_MAT_COLS - FILTER_PADDING * 2; c += 16) {
+            _tile_zero(1);
+            for (int acc = 0; acc < 3; ++acc) {
+                _tile_loadd(0, tfilter[acc].bf16s, 2 * sizeof(bf16_t));
+                _tile_loadd(2, &input->rows[r + acc].cols[c], 1 * sizeof(bf16_t));
+                _tile_dpbssd(1, 2, 0);
             }
 
-            const int offsetR = patchRaw + (pc / FILTER_SIZE);
-            const int offsetC = col16 * PATCH_STRIDE_16 + pr + (pc % FILTER_SIZE);
-
-            patch_input->rows[pr].cols[pc] = fp32_to_bf16(input->rows[offsetR].cols[offsetC]);
-        }
-
-        for (int pc = FILTER_SIZE * FILTER_SIZE; pc < PATCH_INPUT_COLS; ++pc) {
-            patch_input->rows[pr].cols[pc] = 0;
-        }
-    }
-
-    _tile_loadd(PATCH_INPUT_REG_2, patch_input->bf16s, PATCH_INPUT_COLS * sizeof(bf16_t));
-}
-
-static void store_patch_output(SimMat *output, int patchRaw, int col16) {
-    _tile_stored(PATCH_OUTPUT_REG_1,
-                 output->fp32s + col16 * PATCH_STRIDE_16 + (patchRaw) * SIM_MAT_COLS,
-                 PATCH_OUTPUT_COLS * sizeof(fp32_t)
-    );
-
-    __asm__ __volatile__ ("" : "+m" (output->fp32s));
-}
-
-void convolution_amx(SimMat *output, const SimMat *input, const Filter3x3 *filter) {
-    PatchInputMat patch_input;
-    PatchOutputMat patch_output;
-
-    memset(&patch_output, 0, sizeof(PatchOutputMat));
-
-    for (int patchRaw = 0; patchRaw < SIM_MAT_ROWS - FILTER_PADDING * 2; ++patchRaw) {
-        for (int col16 = 0; col16 < SIM_MAT_COLS / PATCH_STRIDE_16; ++col16) {
-            _tile_loadd(PATCH_OUTPUT_REG_1, patch_output.fp32s, PATCH_OUTPUT_COLS * sizeof(fp32_t));
-
-            load_patch_input(&patch_input, input, patchRaw, col16);
-
-            _tile_dpbf16ps(PATCH_OUTPUT_REG_1, PATCH_INPUT_REG_2, PATCH_FILTER_REG_3);
-
-            store_patch_output(output, patchRaw, col16);
+            _tile_stored(1, &output->rows[r].cols[c], 1 * sizeof(fp32_t));
         }
     }
 }
 
 // -----------------------------------------------
 
-static void mock_task(SimMat *output, float f[restrict NB][NZ2][NY2][NX2], const Filter3x3 *filter) {
+static void mock_task(SimMat *output, float f[restrict NB][NZ2][NY2][NX2], const tfilter_t tfilter[3]) {
     SimMat *input = (SimMat *) (f[SAMPLE_LAYER_N][SAMPLE_LAYER_Z]);
 
-    convolution_amx(output, input, filter);
+    static input_buffer_t input_buffer;
+    store_input_buffer(&input_buffer, input);
+
+    convolution_amx(output, &input_buffer, tfilter);
 }
 
 // -----------------------------------------------
@@ -195,21 +159,22 @@ int main() {
     init_sim_state(&simState);
 
     prepare_system_for_amx();
-
     init_tile_config();
 
     Filter3x3 filter;
     make_filter(&filter);
-    load_patch_filter(&filter);
 
-    ConvOutput output;
-    memset(&output, 0, sizeof(ConvOutput));
+    tfilter_t tfilter[3];
+    store_tfilter(tfilter, &filter);
+
+    output_t output;
+    memset(&output, 0, sizeof(output_t));
 
     // Main loop
     for (int ii = 1; ii <= LAST; ii++) {
         tick_sim_state(&simState, ii);
 
-        mock_task(&output.mats[ii - 1], simState.f, &filter);
+        mock_task(&output.mats[ii - 1], simState.f, tfilter);
     }
 
     output_conv(&output, "output/out_amx.txt");
